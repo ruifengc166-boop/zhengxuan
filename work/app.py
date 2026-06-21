@@ -474,7 +474,7 @@ def health():
 @app.route("/admin/")
 @app.route("/admin")
 def serve_admin():
-    return send_from_directory(PUBLIC_DIR / "admin", "index.html")
+    return send_from_directory(str(PUBLIC_DIR / "admin"), "index.html")
 
 
 @app.route("/")
@@ -495,7 +495,7 @@ def serve_frontend(subpath):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", os.environ.get("RAILWAY_PORT", "3000")))
+    port = int(os.environ.get("PORT", "3002"))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     print("┌─────────────────────────────────────────────┐")
     print(f"│  政宣智作 · 开发服务器 v0.6.0                │")

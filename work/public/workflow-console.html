@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>政宣智作 · 工作流测试台</title>
+  <style>
+    :root{--bg:#f5f7fa;--card:#fff;--line:#dce3ea;--ink:#17202c;--muted:#6a7785;--blue:#226ec8;--green:#1d8f67;--red:#bd3f3f}
+    *{box-sizing:border-box}body{margin:0;font-family:"Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:1120px;margin:0 auto;padding:28px 18px 60px}.head{display:flex;align-items:flex-end;gap:14px;margin-bottom:18px}
+    h1{font-size:24px;margin:0}.hint{color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:360px 1fr;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 16px rgba(20,40,80,.04);overflow:hidden}.card h2{font-size:15px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}.body{padding:14px 16px}.row{display:flex;gap:8px;margin-bottom:10px}.row>*{flex:1}label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}input,textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;background:#fff}textarea{min-height:84px;resize:vertical}button{border:0;background:var(--blue);color:#fff;border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer}button.secondary{background:#e9eef5;color:#233449}button.green{background:var(--green)}button.red{background:var(--red)}button:disabled{opacity:.5;cursor:not-allowed}.steps{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.step{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff}.step b{display:block;font-size:13px;margin-bottom:8px}.log{height:520px;overflow:auto;background:#101722;color:#dce8f5;border-radius:12px;padding:12px;font:12px/1.5 Consolas,monospace;white-space:pre-wrap}.pill{display:inline-block;font-size:11px;color:#35506e;background:#edf3fa;border-radius:20px;padding:4px 8px;margin-right:5px}.ok{color:#82e0aa}.err{color:#ffb3b3}.small{font-size:12px;color:var(--muted);line-height:1.6}.file{padding:10px;border:1px dashed var(--line);border-radius:10px;background:#fafcff}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>政宣智作 · 工作流测试台</h1>
+    <div class="hint">用于验证资料 → 脚本 → 分镜 → 自检 → 证据包的后端闭环</div>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h2>登录与项目</h2>
+      <div class="body">
+        <div class="row">
+          <div><label>手机号</label><input id="phone" value="18800000000"></div>
+          <div><label>密码</label><input id="password" type="password" placeholder="输入管理员密码"></div>
+        </div>
+        <div class="row"><button onclick="login()">登录</button><button class="secondary" onclick="loadProjects()">刷新项目</button></div>
+        <label>Token</label><textarea id="token" placeholder="登录后自动填入，也可手动粘贴"></textarea>
+        <label>当前项目 ID</label><input id="projectId" placeholder="选择或输入 project_id">
+        <div class="row"><button class="green" onclick="createProject()">新建测试项目</button><button class="secondary" onclick="loadProjectDetail()">查看详情</button></div>
+        <div class="small">说明：这个页面不替代正式前端，只是开发/部署时快速测试 P1 工作流接口。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>执行工作流</h2>
+      <div class="body">
+        <div class="steps">
+          <div class="step"><b>1. 上传资料</b><div class="file"><input id="file" type="file"><select id="dataLevel"><option value="L1">L1 公开资料</option><option value="L2">L2 内部一般资料</option><option value="L3">L3 敏感资料</option></select></div><button onclick="uploadFile()">上传到项目</button></div>
+          <div class="step"><b>2. 资料解析</b><button onclick="parseAllSources()">解析全部资料</button><button class="secondary" onclick="listSources()">查看资料</button></div>
+          <div class="step"><b>3. 脚本生成</b><button onclick="generateScript()">生成脚本初稿</button><button class="secondary" onclick="listScripts()">查看脚本</button></div>
+          <div class="step"><b>4. 分镜 Prompt</b><button onclick="generateStoryboard()">生成分镜 Prompt</button><span class="pill">普通宣传员模式</span></div>
+          <div class="step"><b>5. 发布自检</b><button onclick="runReview()">运行自检</button><span class="pill">来源 / 授权 / 脚本 / 生成任务</span></div>
+          <div class="step"><b>6. 证据包</b><button onclick="createEvidencePackage()">生成证据包 ZIP</button><button class="secondary" onclick="downloadLastExport()">下载上次导出</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:16px"></div>
+  <div class="card">
+    <h2>接口返回</h2>
+    <div class="body"><div id="log" class="log">等待操作...</div></div>
+  </div>
+</div>
+<script>
+let lastExportUrl = '';
+function getToken(){ return document.getElementById('token').value.trim() || localStorage.getItem('workflow_token') || ''; }
+function projectId(){ return document.getElementById('projectId').value.trim(); }
+function log(data, isError=false){ const el=document.getElementById('log'); const text=typeof data==='string'?data:JSON.stringify(data,null,2); el.innerHTML='<span class="'+(isError?'err':'ok')+'">'+new Date().toLocaleTimeString()+'</span>\n'+text; }
+async function api(url, opts={}){ opts.headers=opts.headers||{}; if(!(opts.body instanceof FormData)) opts.headers['Content-Type']='application/json'; const t=getToken(); if(t) opts.headers.Authorization='Bearer '+t; const res=await fetch(url, opts); const ct=res.headers.get('content-type')||''; const data=ct.includes('application/json')?await res.json():await res.text(); if(!res.ok) throw data; return data; }
+async function login(){ try{ const data=await api('/api/auth/login',{method:'POST',body:JSON.stringify({phone:phone.value,password:password.value})}); token.value=data.token; localStorage.setItem('workflow_token',data.token); log(data); await loadProjects(); }catch(e){log(e,true)} }
+async function loadProjects(){ try{ const data=await api('/api/projects'); log(data); if(data.projects&&data.projects[0]) projectId.value=data.projects[0].id; }catch(e){log(e,true)} }
+async function createProject(){ try{ const data=await api('/api/projects',{method:'POST',body:JSON.stringify({name:'AI宣传片测试项目 '+new Date().toLocaleString(),type:'宣传片',scenes:6,data_level:'L1',publish_channel:'公众号 / 视频号'})}); projectId.value=data.id; log(data); }catch(e){log(e,true)} }
+async function loadProjectDetail(){ try{ log(await api('/api/projects/'+projectId())); }catch(e){log(e,true)} }
+async function uploadFile(){ try{ const f=file.files[0]; if(!f) return log('请选择文件',true); const fd=new FormData(); fd.append('file',f); fd.append('project_id',projectId()); fd.append('data_level',dataLevel.value); const data=await api('/api/upload',{method:'POST',body:fd,headers:{}}); log(data); }catch(e){log(e,true)} }
+async function listSources(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/sources')); }catch(e){log(e,true)} }
+async function parseAllSources(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/sources/parse-all',{method:'POST',body:JSON.stringify({})})); }catch(e){log(e,true)} }
+async function generateScript(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/scripts/generate',{method:'POST',body:JSON.stringify({})})); }catch(e){log(e,true)} }
+async function listScripts(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/scripts')); }catch(e){log(e,true)} }
+async function generateStoryboard(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/storyboard/generate',{method:'POST',body:JSON.stringify({style:'纪实、克制、可信、公共服务宣传片'})})); }catch(e){log(e,true)} }
+async function runReview(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/review/run',{method:'POST',body:JSON.stringify({})})); }catch(e){log(e,true)} }
+async function createEvidencePackage(){ try{ const data=await api('/api/workflow/projects/'+projectId()+'/exports/evidence-package',{method:'POST',body:JSON.stringify({version_label:'测试证据包'})}); lastExportUrl=data.package_url; log(data); }catch(e){log(e,true)} }
+function downloadLastExport(){ if(!lastExportUrl) return log('还没有生成证据包',true); const t=getToken(); fetch(lastExportUrl,{headers:{Authorization:'Bearer '+t}}).then(r=>r.blob()).then(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='evidence-package.zip'; a.click(); }); }
+</script>
+</body>
+</html>

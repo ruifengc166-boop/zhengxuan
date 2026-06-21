@@ -1,6 +1,8 @@
 import sqlite3
 import os
 import hashlib
+import hmac
+import secrets
 import uuid
 import time
 from pathlib import Path
@@ -9,13 +11,31 @@ BASE_DIR = Path(__file__).parent
 DB_PATH = BASE_DIR / "data" / "zhengxuan.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 
-def get_db():
+PBKDF2_ITERATIONS = int(os.environ.get("PASSWORD_HASH_ITERATIONS", "260000"))
+
+
+def ensure_directories():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def get_db():
+    ensure_directories()
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
+
+
+def _table_columns(conn, table_name):
+    return {row["name"] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()}
+
+
+def _add_column_if_missing(conn, table_name, column_name, definition):
+    if column_name not in _table_columns(conn, table_name):
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
+
 
 def init_db():
     conn = get_db()
@@ -68,15 +88,203 @@ def init_db():
         created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
     );
     """)
+    migrate_db(conn)
     conn.commit()
     conn.close()
+
+
+def migrate_db(conn=None):
+    """Safe, idempotent migrations for the lightweight SQLite deployment.
+
+    This keeps existing demo deployments running while adding the tables needed
+    for a real AI-video workflow: sources, script versions, prompts, tasks,
+    candidates, usage records, exports and review items.
+    """
+    own_conn = conn is None
+    conn = conn or get_db()
+
+    for table_name, column_name, definition in [
+        ("uploaded_files", "org_id", "TEXT DEFAULT ''"),
+        ("uploaded_files", "mime_type", "TEXT DEFAULT ''"),
+        ("uploaded_files", "data_level", "TEXT DEFAULT 'L1'"),
+        ("uploaded_files", "storage_status", "TEXT DEFAULT 'local'"),
+        ("uploaded_files", "auth_status", "TEXT DEFAULT 'unchecked'"),
+        ("project_scenes", "locked_image_url", "TEXT DEFAULT ''"),
+        ("project_scenes", "locked_video_url", "TEXT DEFAULT ''"),
+        ("project_scenes", "prompt_version", "INTEGER DEFAULT 1"),
+        ("projects", "data_level", "TEXT DEFAULT 'L1'"),
+        ("projects", "rule_pack", "TEXT DEFAULT ''"),
+        ("projects", "publish_channel", "TEXT DEFAULT ''"),
+        ("projects", "aspect_ratio", "TEXT DEFAULT '16:9'"),
+        ("projects", "duration_target", "TEXT DEFAULT ''"),
+    ]:
+        try:
+            _add_column_if_missing(conn, table_name, column_name, definition)
+        except sqlite3.OperationalError:
+            pass
+
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS project_sources (
+        id TEXT PRIMARY KEY,
+        project_id TEXT REFERENCES projects(id),
+        org_id TEXT DEFAULT '',
+        file_id TEXT DEFAULT '',
+        title TEXT DEFAULT '',
+        source_type TEXT DEFAULT 'file',
+        source_url TEXT DEFAULT '',
+        data_level TEXT DEFAULT 'L1',
+        parse_status TEXT DEFAULT 'pending',
+        citation_count INTEGER DEFAULT 0,
+        created_by TEXT DEFAULT '',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS source_extractions (
+        id TEXT PRIMARY KEY,
+        source_id TEXT REFERENCES project_sources(id),
+        content_type TEXT DEFAULT 'text',
+        extracted_text TEXT DEFAULT '',
+        facts_json TEXT DEFAULT '{}',
+        risk_json TEXT DEFAULT '{}',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS script_versions (
+        id TEXT PRIMARY KEY,
+        project_id TEXT REFERENCES projects(id),
+        version_no INTEGER DEFAULT 1,
+        title TEXT DEFAULT '',
+        content TEXT DEFAULT '',
+        source_coverage REAL DEFAULT 0,
+        risk_status TEXT DEFAULT 'unchecked',
+        locked INTEGER DEFAULT 0,
+        created_by TEXT DEFAULT '',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS shot_prompts (
+        id TEXT PRIMARY KEY,
+        scene_id TEXT REFERENCES project_scenes(id),
+        project_id TEXT REFERENCES projects(id),
+        prompt_type TEXT DEFAULT 'image',
+        version_no INTEGER DEFAULT 1,
+        prompt TEXT DEFAULT '',
+        negative_prompt TEXT DEFAULT '',
+        references_json TEXT DEFAULT '{}',
+        model_provider TEXT DEFAULT '',
+        model_name TEXT DEFAULT '',
+        locked INTEGER DEFAULT 0,
+        created_by TEXT DEFAULT '',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS generation_tasks (
+        id TEXT PRIMARY KEY,
+        org_id TEXT DEFAULT '',
+        project_id TEXT DEFAULT '',
+        scene_id TEXT DEFAULT '',
+        task_type TEXT DEFAULT 'video',
+        status TEXT DEFAULT 'queued',
+        progress INTEGER DEFAULT 0,
+        provider TEXT DEFAULT '',
+        model_name TEXT DEFAULT '',
+        api_source TEXT DEFAULT 'platform',
+        prompt TEXT DEFAULT '',
+        params_json TEXT DEFAULT '{}',
+        estimated_cost REAL DEFAULT 0,
+        actual_cost REAL DEFAULT 0,
+        supplier_task_id TEXT DEFAULT '',
+        error_message TEXT DEFAULT '',
+        created_by TEXT DEFAULT '',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+        updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS generation_candidates (
+        id TEXT PRIMARY KEY,
+        task_id TEXT REFERENCES generation_tasks(id),
+        project_id TEXT DEFAULT '',
+        scene_id TEXT DEFAULT '',
+        candidate_type TEXT DEFAULT 'video',
+        file_url TEXT DEFAULT '',
+        thumbnail_url TEXT DEFAULT '',
+        status TEXT DEFAULT 'generated',
+        score_json TEXT DEFAULT '{}',
+        review_status TEXT DEFAULT 'unchecked',
+        failure_reason TEXT DEFAULT '',
+        locked INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS usage_records (
+        id TEXT PRIMARY KEY,
+        org_id TEXT DEFAULT '',
+        project_id TEXT DEFAULT '',
+        task_id TEXT DEFAULT '',
+        user_id TEXT DEFAULT '',
+        provider TEXT DEFAULT '',
+        model_name TEXT DEFAULT '',
+        api_source TEXT DEFAULT 'platform',
+        usage_unit TEXT DEFAULT '',
+        usage_amount REAL DEFAULT 0,
+        cost REAL DEFAULT 0,
+        status TEXT DEFAULT 'pending',
+        note TEXT DEFAULT '',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS review_items (
+        id TEXT PRIMARY KEY,
+        project_id TEXT DEFAULT '',
+        org_id TEXT DEFAULT '',
+        item_type TEXT DEFAULT 'content',
+        severity TEXT DEFAULT 'R1',
+        title TEXT DEFAULT '',
+        evidence TEXT DEFAULT '',
+        status TEXT DEFAULT 'open',
+        owner_user_id TEXT DEFAULT '',
+        due_at TEXT DEFAULT '',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+        updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS exports (
+        id TEXT PRIMARY KEY,
+        project_id TEXT DEFAULT '',
+        org_id TEXT DEFAULT '',
+        version_label TEXT DEFAULT '',
+        status TEXT DEFAULT 'locked',
+        video_url TEXT DEFAULT '',
+        package_url TEXT DEFAULT '',
+        ai_label_enabled INTEGER DEFAULT 1,
+        evidence_package_json TEXT DEFAULT '{}',
+        confirmed_by TEXT DEFAULT '',
+        confirmed_at TEXT DEFAULT '',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+    """)
+
+    if own_conn:
+        conn.commit()
+        conn.close()
+
+
+def log_operation(user_id="", user_name="", action="", detail="", ip=""):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO operation_logs (id,user_id,user_name,action,detail,ip) VALUES (?,?,?,?,?,?)",
+        (gen_id("log"), user_id, user_name, action, detail, ip)
+    )
+    conn.commit()
+    conn.close()
+
 
 def seed_data():
     conn = get_db()
     if conn.execute("SELECT COUNT(*) FROM organizations").fetchone()[0] > 0:
         conn.close()
         return
-    
+
     pwd = hash_password("123456")
     conn.execute("DELETE FROM organizations")
     conn.executescript("""
@@ -87,7 +295,7 @@ def seed_data():
         ('org-004','区卫健委','区卫健委','张雅然','13600000004','active'),
         ('org-005','市应急管理局','应急局','赵铁军','13500000005','disabled');
     """)
-    
+
     users_data = [
         ('u-001','陈志远','org-001','内容创作','13800000001',pwd),
         ('u-002','李明芳','org-002','内容创作','13900000002',pwd),
@@ -98,7 +306,7 @@ def seed_data():
     ]
     for u in users_data:
         conn.execute("INSERT OR REPLACE INTO users (id,name,org_id,role,phone,password_hash) VALUES (?,?,?,?,?,?)", u)
-    
+
     conn.execute("DELETE FROM templates")
     conn.executescript("""
     INSERT INTO templates (id,name,scenes,duration,description,category,status,usage_count) VALUES
@@ -106,7 +314,7 @@ def seed_data():
         ('t-002','科普教育·简明版',4,'45秒','适用健康教育、科普宣传','科普','published',95),
         ('t-003','专题纪实·深度版',10,'120秒','适用人物专题、项目纪实','专题','published',67);
     """)
-    
+
     conn.execute("DELETE FROM projects")
     conn.executescript("""
     INSERT INTO projects (id,name,org_id,user_id,status,progress,deadline,project_type) VALUES
@@ -114,7 +322,7 @@ def seed_data():
         ('p-002','医师节专题短片','org-004','u-004','自检中',92,'2026-06-28','专题片'),
         ('p-003','公共卫生科普系列','org-002','u-002','制作中',45,'2026-07-30','系列短视频');
     """)
-    
+
     conn.execute("DELETE FROM billing_records")
     conn.executescript("""
     INSERT INTO billing_records (org_id,org_name,type,amount,method,status,note) VALUES
@@ -124,30 +332,60 @@ def seed_data():
         ('org-001','市第一人民医院','消费',520,'视频生成','completed','医院宣传片'),
         ('org-003','市生态环境局','充值',2000,'对公转账','pending','待财务确认');
     """)
-    
+
     conn.commit()
     conn.close()
     print(f"[DB] 种子数据已写入 ({len(users_data)} 个用户, 3 个模板, 3 个项目)")
 
+
 def hash_password(password):
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), PBKDF2_ITERATIONS).hex()
+    return f"pbkdf2_sha256${PBKDF2_ITERATIONS}${salt}${digest}"
+
+
+def _legacy_sha256(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+
 def verify_password(password, hash_val):
-    return hash_password(password) == hash_val
+    if not hash_val:
+        return False
+
+    if hash_val.startswith("pbkdf2_sha256$"):
+        try:
+            _, iterations, salt, expected = hash_val.split("$", 3)
+            digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), int(iterations)).hex()
+            return hmac.compare_digest(digest, expected)
+        except Exception:
+            return False
+
+    return hmac.compare_digest(_legacy_sha256(password), hash_val)
+
+
+def needs_password_rehash(hash_val):
+    return bool(hash_val) and not hash_val.startswith("pbkdf2_sha256$")
+
 
 def gen_id(prefix):
     return f"{prefix}-{int(time.time() * 1000)}{uuid.uuid4().hex[:4]}"
 
+
 def now():
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
 
 def today():
     return time.strftime("%Y-%m-%d", time.localtime())
 
+
+ensure_directories()
 if not DB_PATH.exists():
     init_db()
     print(f"[DB] Database initialized: {DB_PATH}")
 else:
-    print(f"[DB] Database exists: {DB_PATH}")
-
-
+    conn = get_db()
+    migrate_db(conn)
+    conn.commit()
+    conn.close()
+    print(f"[DB] Database exists: {DB_PATH}; migrations checked")

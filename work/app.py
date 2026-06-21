@@ -45,6 +45,10 @@ def user_is_admin(user):
     return is_admin_role((user or {}).get("role"))
 
 
+def user_is_super_admin(user):
+    return (user or {}).get("role") == "超级管理员"
+
+
 def row_to_dict(row):
     return dict(row) if row else None
 
@@ -57,7 +61,7 @@ def get_project_for_user(db, project_id, user):
     if not project:
         return None, (jsonify({"error": "项目不存在"}), 404)
 
-    if user_is_admin(user):
+    if user_is_super_admin(user):
         return project, None
 
     if project["org_id"] and project["org_id"] == user.get("org_id"):
@@ -189,7 +193,7 @@ def list_projects():
     params = []
     where = []
 
-    if not user_is_admin(u):
+    if not user_is_super_admin(u):
         if u.get("org_id"):
             where.append("(p.org_id=? OR p.user_id=?)")
             params.extend([u.get("org_id"), u.get("uid")])
@@ -388,7 +392,7 @@ def serve_upload(filename):
 
     u = request.current_user
     allowed = (
-        user_is_admin(u)
+        user_is_super_admin(u)
         or record["uploader_id"] == u.get("uid")
         or (record["org_id"] and record["org_id"] == u.get("org_id"))
     )
@@ -504,7 +508,7 @@ def generation_status(task_id):
         return jsonify({"error": "任务不存在"}), 404
 
     u = request.current_user
-    if not user_is_admin(u):
+    if not user_is_super_admin(u):
         if task["created_by"] != u.get("uid") and task["org_id"] != u.get("org_id"):
             db.close()
             return jsonify({"error": "无权访问该任务"}), 403
@@ -527,7 +531,7 @@ def retry_generation():
         db.close()
         return jsonify({"error": "原任务不存在"}), 404
 
-    if not user_is_admin(request.current_user) and old["org_id"] != request.current_user.get("org_id") and old["created_by"] != request.current_user.get("uid"):
+    if not user_is_super_admin(request.current_user) and old["org_id"] != request.current_user.get("org_id") and old["created_by"] != request.current_user.get("uid"):
         db.close()
         return jsonify({"error": "无权重试该任务"}), 403
 

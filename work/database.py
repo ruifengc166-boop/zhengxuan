@@ -10,6 +10,7 @@ DB_PATH = BASE_DIR / "data" / "zhengxuan.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 
 def get_db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")

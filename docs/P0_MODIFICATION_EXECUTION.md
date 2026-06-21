@@ -1,6 +1,6 @@
-# 政宣智作 P0/P1 安全与工作流底座修改执行说明
+# 政宣智作 P0/P1/P2 安全与工作流底座修改执行说明
 
-本分支用于把当前高保真原型补成“可安全部署、可继续接入真实 AI 视频工作流”的后端底座，并补齐资料、脚本、分镜、自检、证据包的最小业务闭环。
+本分支用于把当前高保真原型补成“可安全部署、可继续接入真实 AI 视频工作流”的后端底座，并补齐资料、脚本、分镜、自检、证据包的最小业务闭环。本次继续新增了“真实模型 API 后台配置模块”，方便在后台填写可灵、Seedance、万相、海螺、OpenAI 或自定义接口。
 
 ## 分支
 
@@ -43,6 +43,20 @@
 11. 支持生成发布证据包 ZIP，包含资料、脚本、分镜、Prompt、生成任务、自检项、上传素材清单。
 12. 新增 `work/public/workflow-console.html`，用于部署后快速测试“资料 → 脚本 → 分镜 → 自检 → 证据包”闭环。
 
+### P2：模型 API 后台配置模块
+
+1. 新增 `work/model_config.py`：模型供应商、模型 API 配置、任务解析逻辑。
+2. 新增 `work/model_config_routes.py`：后台 API 配置接口。
+3. 新增 `work/secret_store.py`：API Key 加密保存与掩码展示。
+4. 新增 `work/public/model-config.html`：后台填写模型 API 的独立页面。
+5. `app.py` 已注册 `/api/model-config/*`，并让图片 / 视频生成任务优先读取后台启用配置。
+6. 后台配置支持三种作用范围：
+   - `platform`：平台级，只有超级管理员可配置；
+   - `org`：组织级，适合单位自有 API；
+   - `user`：个人级，适合测试。
+7. 配置优先级：个人级 > 组织级 > 平台级 > 环境变量 > 模拟模式。
+8. 保存的 API Key 不会明文返回前端，只返回 `api_key_masked`。
+
 ## 腾讯云部署执行步骤
 
 ### 1. 拉取代码
@@ -72,11 +86,12 @@ pip install -r requirements.txt
 ```bash
 APP_ENV=production
 JWT_SECRET=<足够随机的长密钥>
+API_KEY_ENCRYPTION_SECRET=<另一个足够随机的长密钥>
 PORT=3000
 CORS_ORIGINS=<你的正式域名>
 ```
 
-生成 JWT_SECRET 示例：
+生成密钥示例：
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -106,62 +121,49 @@ gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
 cd work && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
 ```
 
-## 接口变化
+## 模型 API 后台配置
 
-### 项目列表
+部署后访问：
 
-`GET /api/projects`
+```text
+/model-config.html
+```
 
-普通用户只能看到自己组织 / 自己创建的项目；管理员按权限看到对应范围。
+使用流程：
 
-### 项目详情
+1. 用管理员账号登录。
+2. 选择作用范围：平台级 / 本组织 / 当前用户。
+3. 选择任务类型：文本、图像、视频。
+4. 选择供应商：可灵、Seedance、万相、海螺、OpenAI、自定义。
+5. 填写模型名、Base URL、API Key、额外参数。
+6. 保存并启用。
+7. 调用 `/api/generate/images` 或 `/api/generate/videos` 时，系统会优先读取启用的后台配置。
 
-`GET /api/projects/<project_id>`
+注意：当前“测试连接”只做安全连通性检查，不会提交真实生成任务，避免误扣费。真正的视频生成提交逻辑应继续在供应商 Adapter 中实现。
 
-返回项目、镜头、资料、脚本版本。
+## 模型配置接口
 
-### 上传文件
+```http
+GET /api/model-config/providers
+GET /api/model-config/configs
+POST /api/model-config/configs
+PUT /api/model-config/configs/<config_id>
+POST /api/model-config/configs/<config_id>/status
+POST /api/model-config/configs/<config_id>/test
+DELETE /api/model-config/configs/<config_id>
+```
 
-`POST /api/upload`
+## 生成接口的模型读取优先级
 
-支持表单字段：
+`POST /api/generate/images` 和 `POST /api/generate/videos` 会按以下顺序找 API 配置：
 
-- `file`
-- `project_id`
-- `data_level`
+1. 当前用户个人级配置；
+2. 当前项目所属组织配置；
+3. 平台级配置；
+4. 环境变量配置；
+5. 没有 API Key 时进入模拟任务落库模式。
 
-上传后自动写入 `uploaded_files`，如果带 `project_id`，同时写入 `project_sources`。
-
-### 文件访问
-
-`GET /uploads/<filename>`
-
-现在必须带 Bearer Token，且只允许：
-
-- 超级管理员；
-- 上传者本人；
-- 同组织用户；
-- 有项目权限的用户。
-
-### 图片生成
-
-`POST /api/generate/images`
-
-现在会创建 `generation_tasks` 记录，并返回 `taskId`。未配置真实 API Key 时，状态为 `simulated`。
-
-### 视频生成
-
-`POST /api/generate/videos`
-
-同图片生成，任务会落库。后续可在此基础上接入可灵、Seedance、万相、海螺等供应商。
-
-### 生成状态
-
-`GET /api/generate/status/<task_id>`
-
-从数据库读取任务状态，不再随机返回状态。
-
-## 新增工作流接口
+## 工作流接口
 
 ### 资料
 
@@ -171,8 +173,6 @@ POST /api/workflow/sources/<source_id>/parse
 POST /api/workflow/projects/<project_id>/sources/parse-all
 ```
 
-说明：上传资料后先进入 `project_sources`，解析结果进入 `source_extractions`。目前轻量支持 TXT、DOCX、PPTX、XLSX；PDF / 图片 / 音视频会返回待 OCR 或待转写状态。
-
 ### 脚本
 
 ```http
@@ -180,8 +180,6 @@ GET /api/workflow/projects/<project_id>/scripts
 POST /api/workflow/projects/<project_id>/scripts/generate
 POST /api/workflow/scripts/<script_id>/lock
 ```
-
-说明：生成脚本会基于已解析资料抽取的 facts，自动生成带 `[S1]` 等引用标记的脚本初稿。
 
 ### 分镜 Prompt
 
@@ -191,8 +189,6 @@ GET /api/workflow/scenes/<scene_id>/prompts
 POST /api/workflow/prompts/<prompt_id>/lock
 ```
 
-说明：分镜生成会把脚本拆成若干 beat，为每个镜头生成 image prompt 和 video prompt，并写入 `shot_prompts`。
-
 ### 发布自检
 
 ```http
@@ -200,16 +196,12 @@ POST /api/workflow/projects/<project_id>/review/run
 POST /api/workflow/review-items/<item_id>/resolve
 ```
 
-说明：自检会检查来源资料、脚本引用、Prompt 完整性、素材授权和生成任务状态。它不能替代人工审批，但可以作为发布前留痕。
-
 ### 证据包导出
 
 ```http
 POST /api/workflow/projects/<project_id>/exports/evidence-package
 GET /api/workflow/exports/<export_id>/download
 ```
-
-说明：导出 ZIP 会写入 `work/exports/`，同时在 `exports` 表里留痕。
 
 ## 测试页面
 
@@ -235,9 +227,9 @@ GET /api/workflow/exports/<export_id>/download
 下一阶段继续补：
 
 1. 真实供应商任务提交与回调：可灵、Seedance、万相、海螺等。
-2. 腾讯云 COS：上传文件、候选图、候选视频、导出包都迁移到对象存储。
-3. Redis / Celery / RQ：生成任务异步队列化。
-4. PDF OCR、图片 OCR、音视频转写。
-5. 前台正式 UI 与 `/api/workflow/*` 深度绑定。
-6. 正式视频合成、字幕、封面、横竖屏版本导出。
-7. 单位 API Key 加密存储与模型路由策略。
+2. 为每个供应商实现 Adapter：submit、poll、callback、normalize_result、estimate_cost。
+3. 腾讯云 COS：上传文件、候选图、候选视频、导出包都迁移到对象存储。
+4. Redis / Celery / RQ：生成任务异步队列化。
+5. PDF OCR、图片 OCR、音视频转写。
+6. 前台正式 UI 与 `/api/workflow/*` 和 `/api/model-config/*` 深度绑定。
+7. 正式视频合成、字幕、封面、横竖屏版本导出。

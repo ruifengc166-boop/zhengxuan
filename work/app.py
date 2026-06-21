@@ -3,7 +3,7 @@ import json
 import time
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, make_response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
@@ -62,7 +62,6 @@ def get_project_for_user(db, project_id, user):
     ).fetchone()
     if not project:
         return None, (jsonify({"error": "项目不存在"}), 404)
-
     if user_is_super_admin(user):
         return project, None
     if project["org_id"] and project["org_id"] == user.get("org_id"):
@@ -86,6 +85,17 @@ def log_current_user(action, detail=""):
         print(f"[WARN] operation log failed: {exc}", flush=True)
 
 
+def index_response():
+    """Serve the original single-file prototype with the non-destructive UI 2.0 layer."""
+    html = (PUBLIC_DIR / "index.html").read_text(encoding="utf-8")
+    css_tag = '<link rel="stylesheet" href="/ui2.css?v=20260621">'
+    if css_tag not in html:
+        html = html.replace("</head>", f"  {css_tag}\n</head>")
+    response = make_response(html)
+    response.headers["Content-Type"] = "text/html; charset=utf-8"
+    return response
+
+
 @app.before_request
 def log_request():
     ts = time.strftime("%H:%M:%S", time.localtime())
@@ -107,17 +117,14 @@ def add_security_headers(response):
 def login():
     if request.method == "OPTIONS":
         return jsonify({}), 200
-
     data = request.get_json() or {}
     phone = data.get("phone", "").strip().replace(" ", "")
     password = data.get("password", "")
-
     db = get_db()
     user = db.execute(
         "SELECT u.*, o.name as org_name FROM users u LEFT JOIN organizations o ON u.org_id=o.id WHERE u.phone=?",
         (phone,)
     ).fetchone()
-
     if not user:
         db.close()
         return jsonify({"success": False, "error": "账号不存在"}), 401
@@ -127,15 +134,12 @@ def login():
     if not verify_password(password, user["password_hash"]):
         db.close()
         return jsonify({"success": False, "error": "密码错误"}), 401
-
     if needs_password_rehash(user["password_hash"]):
         db.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_password(password), user["id"]))
-
     token = create_token(user["id"], user["name"], user["role"], user["org_id"] or "", user["org_name"] or "")
     db.execute("UPDATE users SET last_login=? WHERE id=?", (now(), user["id"]))
     db.commit()
     db.close()
-
     return jsonify({
         "success": True,
         "token": token,
@@ -165,15 +169,7 @@ def logout():
 @login_required
 def me():
     u = request.current_user
-    return jsonify({
-        "user": {
-            "id": u["uid"],
-            "name": u["name"],
-            "org_id": u.get("org_id", ""),
-            "org": u.get("org_name", ""),
-            "role": u["role"],
-        }
-    })
+    return jsonify({"user": {"id": u["uid"], "name": u["name"], "org_id": u.get("org_id", ""), "org": u.get("org_name", ""), "role": u["role"]}})
 
 
 @app.route("/api/projects", methods=["GET"])
@@ -236,7 +232,6 @@ def create_project():
     org_id = data.get("org_id") if user_is_admin(u) and data.get("org_id") else u.get("org_id", "")
     if not org_id:
         return jsonify({"error": "当前账号未绑定空间，无法创建项目"}), 400
-
     db = get_db()
     org = db.execute("SELECT * FROM organizations WHERE id=?", (org_id,)).fetchone()
     business_line = data.get("business_line") or ("personal" if org and org["org_type"] == "personal" else "org")
@@ -300,7 +295,6 @@ def upload_file():
     ext = Path(original_name).suffix.lower()
     if ext not in ALLOWED_UPLOAD_EXTS:
         return jsonify({"error": f"不支持的文件类型: {ext}"}), 400
-
     db = get_db()
     project_id = request.form.get("project_id", "").strip()
     org_id = request.current_user.get("org_id", "")
@@ -310,7 +304,6 @@ def upload_file():
             db.close()
             return error
         org_id = project["org_id"]
-
     fid = gen_id("f")
     safe_name = f"{fid}{ext}"
     file_path = UPLOAD_DIR / safe_name
@@ -475,7 +468,7 @@ def retry_generation():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.5.0"})
+    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.6.0"})
 
 
 @app.route("/admin/")
@@ -486,24 +479,26 @@ def serve_admin():
 
 @app.route("/")
 def serve_root():
-    return send_from_directory(PUBLIC_DIR, "index.html")
+    return index_response()
 
 
 @app.route("/<path:subpath>")
 def serve_frontend(subpath):
     if subpath.startswith("api/"):
         return jsonify({"error": "API endpoint not found"}), 404
+    if subpath == "index.html":
+        return index_response()
     file_path = PUBLIC_DIR / subpath
     if file_path.exists():
         return send_from_directory(PUBLIC_DIR, subpath)
-    return send_from_directory(PUBLIC_DIR, "index.html")
+    return index_response()
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", os.environ.get("RAILWAY_PORT", "3000")))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     print("┌─────────────────────────────────────────────┐")
-    print(f"│  政宣智作 · 开发服务器 v0.5.0                │")
+    print(f"│  政宣智作 · 开发服务器 v0.6.0                │")
     print(f"│  前端:  http://localhost:{port}                │")
     print(f"│  API:   http://localhost:{port}/api           │")
     print(f"│  管理后台: http://localhost:{port}/admin/      │")

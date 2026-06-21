@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>政宣智作 · 注册</title>
+<style>
+body{margin:0;background:#f3f6fa;font-family:"Microsoft YaHei",system-ui,sans-serif;color:#172335}.wrap{max-width:980px;margin:0 auto;padding:42px 18px}.head{text-align:center;margin-bottom:24px}.head h1{margin:0;font-size:30px}.head p{color:#6c7b8a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:#fff;border:1px solid #dce4ed;border-radius:18px;box-shadow:0 12px 32px rgba(30,60,100,.06);overflow:hidden}.card h2{margin:0;padding:18px 20px;border-bottom:1px solid #dce4ed;font-size:18px}.body{padding:20px}.form-row{margin-bottom:14px}.form-row label{display:block;font-size:12px;color:#6c7b8a;margin-bottom:6px}input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #dce4ed;border-radius:10px;padding:11px 12px;font:inherit;font-size:14px;background:#fff}textarea{min-height:92px;resize:vertical}button{width:100%;background:#236fc8;color:#fff;border:0;border-radius:10px;padding:12px;font-size:15px;cursor:pointer}.green{background:#16845f}.note{font-size:12px;color:#6c7b8a;line-height:1.7;margin-top:12px}.result{white-space:pre-wrap;margin-top:14px;background:#101722;color:#dbe8f4;border-radius:12px;padding:12px;font:12px/1.5 Consolas,monospace;display:none}@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><h1>加入政宣智作</h1><p>个人创作者直接开通个人空间；单位业务提交申请后由后台审核开通。</p></div>
+  <div class="grid">
+    <div class="card">
+      <h2>个人创作者注册</h2>
+      <div class="body">
+        <div class="note">适合 AI 视频创作者、自由职业者、内容工作室个人账号。注册后直接进入个人创作空间。</div>
+        <div class="form-row"><label>昵称 / 姓名</label><input id="pName" placeholder="请输入昵称或姓名"></div>
+        <div class="form-row"><label>手机号</label><input id="pPhone" placeholder="请输入手机号"></div>
+        <div class="form-row"><label>登录密码</label><input id="pPassword" type="password" placeholder="至少 6 位"></div>
+        <button class="green" onclick="registerPersonal()">注册个人空间</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>单位申请开通</h2>
+      <div class="body">
+        <div class="note">适合行政事业单位、融媒中心、医院、学校、国企宣传部门。提交后由后台审核开通。</div>
+        <div class="form-row"><label>单位名称</label><input id="oOrgName" placeholder="例如：某市融媒体中心"></div>
+        <div class="form-row"><label>单位类型</label><select id="oOrgType"><option>行政事业单位</option><option>融媒集团 / 融媒体中心</option><option>医院 / 学校</option><option>国企 / 园区平台</option><option>其他组织</option></select></div>
+        <div class="form-row"><label>联系人</label><input id="oName" placeholder="联系人姓名"></div>
+        <div class="form-row"><label>手机号</label><input id="oPhone" placeholder="请输入手机号"></div>
+        <div class="form-row"><label>初始登录密码</label><input id="oPassword" type="password" placeholder="审核通过后用于登录"></div>
+        <div class="form-row"><label>城市</label><input id="oCity" placeholder="例如：深圳"></div>
+        <div class="form-row"><label>使用场景</label><textarea id="oUseCase" placeholder="例如：用于制作政策解读、活动宣传、科普视频、党建宣传等"></textarea></div>
+        <button onclick="submitOrgApplication()">提交单位申请</button>
+      </div>
+    </div>
+  </div>
+  <div class="result" id="result"></div>
+</div>
+<script>
+async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw d;return d}
+function log(d){result.style.display='block';result.textContent=typeof d==='string'?d:JSON.stringify(d,null,2)}
+async function registerPersonal(){try{const d=await post('/api/registration/personal',{name:pName.value,phone:pPhone.value,password:pPassword.value});localStorage.setItem('token',d.token);log('个人空间开通成功，即将进入前台。');setTimeout(function(){location.href='/'},900)}catch(e){log(e)}}
+async function submitOrgApplication(){try{const d=await post('/api/registration/org-application',{org_name:oOrgName.value,org_type:oOrgType.value,name:oName.value,phone:oPhone.value,password:oPassword.value,city:oCity.value,use_case:oUseCase.value});log(d)}catch(e){log(e)}}
+</script>
+</body>
+</html>

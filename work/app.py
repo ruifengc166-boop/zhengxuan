@@ -20,6 +20,8 @@ from database import (
 from auth import create_token, login_required, is_admin_role
 from admin_routes import admin
 from workflow_routes import workflow
+from model_config_routes import model_config_api
+from model_config import resolve_model_config
 
 app = Flask(__name__, static_folder="public", static_url_path="")
 
@@ -33,6 +35,7 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_UPLOAD_MB", "500")) *
 
 app.register_blueprint(admin)
 app.register_blueprint(workflow)
+app.register_blueprint(model_config_api)
 
 ADMIN_ROLES = {"管理员", "超级管理员"}
 ALLOWED_UPLOAD_EXTS = {
@@ -411,15 +414,29 @@ def serve_upload(filename):
     return send_from_directory(UPLOAD_DIR, filename)
 
 
-AI_MODELS = {
-    "text": {"provider": os.environ.get("TEXT_PROVIDER", "openai"), "model": os.environ.get("TEXT_MODEL", "gpt-4o"), "api_key": os.environ.get("OPENAI_API_KEY", "")},
-    "image": {"provider": os.environ.get("IMAGE_PROVIDER", "openai"), "model": os.environ.get("IMAGE_MODEL", "dall-e-3"), "api_key": os.environ.get("OPENAI_API_KEY", "")},
-    "video": {"provider": os.environ.get("VIDEO_PROVIDER", "kling"), "model": os.environ.get("VIDEO_MODEL", "kling-1.6"), "api_key": os.environ.get("KLING_API_KEY", "")},
+ENV_AI_MODELS = {
+    "text": {"provider": os.environ.get("TEXT_PROVIDER", "openai"), "model": os.environ.get("TEXT_MODEL", "gpt-4o"), "api_key": os.environ.get("OPENAI_API_KEY", ""), "scope": "env"},
+    "image": {"provider": os.environ.get("IMAGE_PROVIDER", "openai"), "model": os.environ.get("IMAGE_MODEL", "dall-e-3"), "api_key": os.environ.get("OPENAI_API_KEY", ""), "scope": "env"},
+    "video": {"provider": os.environ.get("VIDEO_PROVIDER", "kling"), "model": os.environ.get("VIDEO_MODEL", "kling-1.6"), "api_key": os.environ.get("KLING_API_KEY", ""), "scope": "env"},
 }
 
 
+def get_model_config_for_task(task_type, org_id="", user_id=""):
+    configured = resolve_model_config(task_type, org_id=org_id, user_id=user_id)
+    if configured:
+        return {
+            "provider": configured.get("provider", ""),
+            "model": configured.get("model_name", ""),
+            "api_key": configured.get("api_key", ""),
+            "api_config_id": configured.get("id", ""),
+            "api_source": configured.get("scope", "platform"),
+            "base_url": configured.get("base_url", ""),
+            "params": configured.get("params", {}),
+        }
+    return ENV_AI_MODELS[task_type]
+
+
 def create_generation_task(task_type, payload):
-    model_config = AI_MODELS[task_type]
     db = get_db()
 
     project_id = (payload.get("project_id") or "").strip()
@@ -433,11 +450,18 @@ def create_generation_task(task_type, payload):
             return None, error
         org_id = project["org_id"]
 
+    model_config = get_model_config_for_task(task_type, org_id=org_id, user_id=request.current_user.get("uid", ""))
+
     task_id = gen_id("task")
     prompt = payload.get("prompt", "")
-    api_source = payload.get("api_source", "platform")
-    status = "queued" if model_config["api_key"] else "simulated"
+    api_source = payload.get("api_source") or model_config.get("api_source") or model_config.get("scope", "platform")
+    status = "queued" if model_config.get("api_key") else "simulated"
     progress = 0 if status == "queued" else 100
+
+    safe_payload = dict(payload)
+    safe_payload["api_config_id"] = model_config.get("api_config_id", "")
+    safe_payload["model_base_url"] = model_config.get("base_url", "")
+    safe_payload.pop("api_key", None)
 
     db.execute(
         """
@@ -458,7 +482,7 @@ def create_generation_task(task_type, payload):
             model_config["model"],
             api_source,
             prompt,
-            json.dumps(payload, ensure_ascii=False),
+            json.dumps(safe_payload, ensure_ascii=False),
             float(payload.get("estimated_cost") or 0),
             request.current_user["uid"],
             now(),
@@ -475,8 +499,10 @@ def create_generation_task(task_type, payload):
         "progress": progress,
         "provider": model_config["provider"],
         "model": model_config["model"],
+        "api_source": api_source,
+        "api_config_id": model_config.get("api_config_id", ""),
         "estimate": "约 30 秒" if task_type == "image" else "约 1-3 分钟",
-        "message": "已创建生成任务，等待供应商回调 / 轮询接入。" if status == "queued" else "当前为模拟模式：任务已落库，未调用真实供应商 API。"
+        "message": "已读取后台 API 配置并创建任务；下一步需要接入供应商任务提交适配器。" if status == "queued" else "当前为模拟模式：未找到启用的后台 API Key 或环境变量 API Key。"
     }, None
 
 
@@ -550,7 +576,7 @@ def retry_generation():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.3.0"})
+    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.4.0"})
 
 
 @app.route("/admin/")
@@ -578,7 +604,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", os.environ.get("RAILWAY_PORT", "3000")))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     print("┌─────────────────────────────────────────────┐")
-    print(f"│  政宣智作 · 开发服务器 v0.3.0                │")
+    print(f"│  政宣智作 · 开发服务器 v0.4.0                │")
     print(f"│  前端:  http://localhost:{port}                │")
     print(f"│  API:   http://localhost:{port}/api           │")
     print(f"│  管理后台: http://localhost:{port}/admin/      │")

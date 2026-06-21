@@ -94,12 +94,7 @@ def init_db():
 
 
 def migrate_db(conn=None):
-    """Safe, idempotent migrations for the lightweight SQLite deployment.
-
-    This keeps existing demo deployments running while adding the tables needed
-    for a real AI-video workflow: sources, script versions, prompts, tasks,
-    candidates, usage records, exports and review items.
-    """
+    """Safe, idempotent migrations for the lightweight SQLite deployment."""
     own_conn = conn is None
     conn = conn or get_db()
 
@@ -117,6 +112,12 @@ def migrate_db(conn=None):
         ("projects", "publish_channel", "TEXT DEFAULT ''"),
         ("projects", "aspect_ratio", "TEXT DEFAULT '16:9'"),
         ("projects", "duration_target", "TEXT DEFAULT ''"),
+        ("projects", "visibility", "TEXT DEFAULT 'private'"),
+        ("projects", "business_line", "TEXT DEFAULT 'org'"),
+        ("organizations", "org_type", "TEXT DEFAULT 'organization'"),
+        ("organizations", "owner_user_id", "TEXT DEFAULT ''"),
+        ("users", "account_type", "TEXT DEFAULT 'org'"),
+        ("users", "nickname", "TEXT DEFAULT ''"),
     ]:
         try:
             _add_column_if_missing(conn, table_name, column_name, definition)
@@ -124,6 +125,26 @@ def migrate_db(conn=None):
             pass
 
     conn.executescript("""
+    CREATE TABLE IF NOT EXISTS registration_applications (
+        id TEXT PRIMARY KEY,
+        application_type TEXT DEFAULT 'org',
+        name TEXT DEFAULT '',
+        phone TEXT DEFAULT '',
+        password_hash TEXT DEFAULT '',
+        org_name TEXT DEFAULT '',
+        org_type TEXT DEFAULT '',
+        role_title TEXT DEFAULT '',
+        city TEXT DEFAULT '',
+        use_case TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending',
+        assigned_user_id TEXT DEFAULT '',
+        assigned_org_id TEXT DEFAULT '',
+        review_note TEXT DEFAULT '',
+        reviewed_by TEXT DEFAULT '',
+        reviewed_at TEXT DEFAULT '',
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+    );
+
     CREATE TABLE IF NOT EXISTS project_sources (
         id TEXT PRIMARY KEY,
         project_id TEXT REFERENCES projects(id),
@@ -288,24 +309,24 @@ def seed_data():
     pwd = hash_password("123456")
     conn.execute("DELETE FROM organizations")
     conn.executescript("""
-    INSERT INTO organizations (id,name,short_name,contact,phone,status) VALUES
-        ('org-001','市第一人民医院','市一院','陈志远','13800000001','active'),
-        ('org-002','市教育局','市教育局','李明芳','13900000002','active'),
-        ('org-003','市生态环境局','生态局','王建平','13700000003','active'),
-        ('org-004','区卫健委','区卫健委','张雅然','13600000004','active'),
-        ('org-005','市应急管理局','应急局','赵铁军','13500000005','disabled');
+    INSERT INTO organizations (id,name,short_name,contact,phone,status,org_type) VALUES
+        ('org-001','市第一人民医院','市一院','陈志远','13800000001','active','organization'),
+        ('org-002','市教育局','市教育局','李明芳','13900000002','active','organization'),
+        ('org-003','市生态环境局','生态局','王建平','13700000003','active','organization'),
+        ('org-004','区卫健委','区卫健委','张雅然','13600000004','active','organization'),
+        ('org-005','市应急管理局','应急局','赵铁军','13500000005','disabled','organization');
     """)
 
     users_data = [
-        ('u-001','陈志远','org-001','内容创作','13800000001',pwd),
-        ('u-002','李明芳','org-002','内容创作','13900000002',pwd),
-        ('u-003','王建平','org-003','审核人','13700000003',pwd),
-        ('u-004','张雅然','org-004','管理员','13600000004',pwd),
-        ('u-005','赵铁军','org-005','内容创作','13500000005',pwd),
-        ('admin','系统管理员','org-004','超级管理员','18800000000',pwd),
+        ('u-001','陈志远','org-001','内容创作','13800000001',pwd,'org'),
+        ('u-002','李明芳','org-002','内容创作','13900000002',pwd,'org'),
+        ('u-003','王建平','org-003','审核人','13700000003',pwd,'org'),
+        ('u-004','张雅然','org-004','管理员','13600000004',pwd,'org'),
+        ('u-005','赵铁军','org-005','内容创作','13500000005',pwd,'org'),
+        ('admin','系统管理员','org-004','超级管理员','18800000000',pwd,'org'),
     ]
     for u in users_data:
-        conn.execute("INSERT OR REPLACE INTO users (id,name,org_id,role,phone,password_hash) VALUES (?,?,?,?,?,?)", u)
+        conn.execute("INSERT OR REPLACE INTO users (id,name,org_id,role,phone,password_hash,account_type) VALUES (?,?,?,?,?,?,?)", u)
 
     conn.execute("DELETE FROM templates")
     conn.executescript("""
@@ -317,10 +338,10 @@ def seed_data():
 
     conn.execute("DELETE FROM projects")
     conn.executescript("""
-    INSERT INTO projects (id,name,org_id,user_id,status,progress,deadline,project_type) VALUES
-        ('p-001','2026年医院宣传片','org-001','u-001','制作中',65,'2026-07-15','宣传片'),
-        ('p-002','医师节专题短片','org-004','u-004','自检中',92,'2026-06-28','专题片'),
-        ('p-003','公共卫生科普系列','org-002','u-002','制作中',45,'2026-07-30','系列短视频');
+    INSERT INTO projects (id,name,org_id,user_id,status,progress,deadline,project_type,business_line) VALUES
+        ('p-001','2026年医院宣传片','org-001','u-001','制作中',65,'2026-07-15','宣传片','org'),
+        ('p-002','医师节专题短片','org-004','u-004','自检中',92,'2026-06-28','专题片','org'),
+        ('p-003','公共卫生科普系列','org-002','u-002','制作中',45,'2026-07-30','系列短视频','org');
     """)
 
     conn.execute("DELETE FROM billing_records")

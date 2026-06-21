@@ -19,6 +19,7 @@ from database import (
 )
 from auth import create_token, login_required, is_admin_role
 from admin_routes import admin
+from workflow_routes import workflow
 
 app = Flask(__name__, static_folder="public", static_url_path="")
 
@@ -31,6 +32,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_UPLOAD_MB", "500")) * 1024 * 1024
 
 app.register_blueprint(admin)
+app.register_blueprint(workflow)
 
 ADMIN_ROLES = {"管理员", "超级管理员"}
 ALLOWED_UPLOAD_EXTS = {

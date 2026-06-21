@@ -1,3 +1,4 @@
+import sys
 import os
 import json
 import time
@@ -98,12 +99,15 @@ def index_response():
 
 @app.before_request
 def log_request():
-    ts = time.strftime("%H:%M:%S", time.localtime())
-    if not request.path.startswith("/static/"):
-        print(f"[{ts}] {request.method} {request.path}", flush=True)
+    try:
+        ts = time.strftime("%H:%M:%S", time.localtime())
+        if not request.path.startswith("/static/"):
+            sys.stderr.write(f"[{ts}] {request.method} {request.path}\n")
+            sys.stderr.flush()
+    except Exception:
+        pass
 
-
-@app.after_request
+app.after_request
 def add_security_headers(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
     response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
@@ -474,6 +478,10 @@ def health():
 @app.route("/admin/")
 @app.route("/admin")
 def serve_admin():
+    try:
+        return open(PUBLIC_DIR / "admin" / "index.html", encoding="utf-8").read()
+    except Exception:
+        return "Admin page not found", 404
     return send_from_directory(str(PUBLIC_DIR / "admin"), "index.html")
 
 

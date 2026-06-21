@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>政宣智作 · 管理后台</title>
+<style>
+:root{--nav:#0f2438;--nav-2:#1a3750;--blue:#1a6dc9;--blue-2:#e8f1fc;--green:#219b7b;--red:#cc4545;--gold:#c99440;--ink:#1a2737;--muted:#6d7b89;--line:#dfe4ea;--bg:#f1f4f8;--paper:#fff;--shadow:0 2px 8px rgba(0,0,0,.06);--r:8px}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;color:var(--ink);background:var(--bg);font-size:14px}
+a{text-decoration:none;color:inherit}
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh;overflow:hidden}
+.side{background:linear-gradient(180deg,#0f2438,#0a1b2b);color:#cddce8;display:flex;flex-direction:column;overflow-y:auto}
+.side-head{padding:18px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
+.side-head h1{font-size:16px;color:#fff;letter-spacing:1px}
+.side-head small{font-size:10px;color:#7d9cb5;display:block;margin-top:3px}
+.nav{padding:12px 8px;flex:1}
+.nav-item{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:6px;font-size:13px;color:#adc4d6;margin:2px 0;cursor:pointer;transition:.15s}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:linear-gradient(90deg,rgba(45,125,210,.25),rgba(45,125,210,.08));color:#fff;font-weight:500}
+.nav-item .badge{margin-left:auto;background:#cb5a5a;color:#fff;border-radius:8px;padding:2px 6px;font-size:9px;min-width:18px;text-align:center}
+.side-foot{padding:12px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:#7893a8}
+.main{display:flex;flex-direction:column;overflow:hidden}
+.top{height:52px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 20px;gap:12px}
+.top h2{font-size:16px;font-weight:600}
+.page-info{font-size:11px;color:var(--muted)}
+.top-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);border-radius:6px;padding:6px 12px;font-size:12px;background:var(--paper);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:.12s}
+.btn:hover{border-color:#b5c6d8;background:#f7fafc}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 2px 6px rgba(26,109,201,.2)}
+.btn.primary:hover{background:#155db3}
+.btn.danger{color:var(--red);border-color:#eac2c2;background:#fff8f8}
+.btn.small{padding:4px 8px;font-size:11px}
+.btn.xs{padding:2px 6px;font-size:10px}
+body{overflow:hidden}
+.workspace{flex:1;overflow:auto;padding:18px 20px}
+.page{display:none}.page.active{display:block;animation:fade .2s}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{border:1px solid var(--line);background:var(--paper);border-radius:var(--r);padding:15px 16px}
+.stat .label{font-size:11px;color:var(--muted);margin-bottom:6px}
+.stat .value{font-size:22px;font-weight:650}
+.stat .sub{font-size:10px;color:#8c99a6;margin-top:4px}
+.stat .green{color:var(--green)}.stat .red{color:var(--red)}.stat .gold{color:var(--gold)}
+.row{display:grid;grid-template-columns:1.6fr 1fr;gap:12px}
+.card{border:1px solid var(--line);background:var(--paper);border-radius:var(--r);overflow:hidden}
+.card-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+.card-head h3{font-size:13px}.card-head .right{margin-left:auto;font-size:10px;color:var(--muted)}
+.card-body{padding:12px 14px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 10px;background:#f8fafc;color:#6b7989;font-weight:500;border-bottom:1px solid var(--line)}
+td{padding:8px 10px;border-bottom:1px solid #eef1f5}
+.badge{display:inline-block;padding:2px 6px;border-radius:10px;font-size:10px}
+.badge.green{background:#e6f5ef;color:#1f8266}.badge.red{background:#fce8e8;color:#b53e3e}.badge.blue{background:#e8f0fa;color:#1a6dc9}.badge.gold{background:#f8efe1;color:#a77a2e}
+.tag{padding:2px 5px;border-radius:4px;font-size:10px;background:#eef2f7;color:#5a6979}
+input,select{font-family:inherit;font-size:12px;padding:6px 8px;border:1px solid var(--line);border-radius:5px;outline:0}
+input:focus,select:focus{border-color:#5897d2;box-shadow:0 0 0 2px #e7f2fc}
+.pagination{display:flex;align-items:center;gap:8px;justify-content:center;padding:12px 0;font-size:11px;color:var(--muted)}
+.pagination button{padding:3px 8px;border:1px solid var(--line);border-radius:4px;background:var(--paper);cursor:pointer;font-size:11px}
+.pagination button:disabled{opacity:.4;cursor:default}
+.search-bar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+.search-bar input{flex:1;max-width:280px}
+.filter-group{display:flex;gap:6px}
+.filter-group button{padding:4px 10px;border:1px solid var(--line);border-radius:12px;background:var(--paper);cursor:pointer;font-size:11px;transition:.1s}
+.filter-group button.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:none;align-items:center;justify-content:center;animation:fade .14s}
+.modal.show{display:flex}
+.modal-card{background:var(--paper);border-radius:10px;width:480px;max-width:90vw;max-height:80vh;overflow:auto;box-shadow:0 16px 48px rgba(0,0,0,.15)}
+.modal-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+.modal-head h3{font-size:14px}.modal-head .close{margin-left:auto;cursor:pointer;font-size:18px;color:#8a96a3;border:0;background:none;padding:4px}
+.modal-body{padding:16px}
+.form-row{margin-bottom:12px}.form-row label{display:block;font-size:11px;color:#5d6b7a;margin-bottom:5px}.form-row input,.form-row select{width:100%}
+.modal-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+.chart-bar{display:flex;align-items:flex-end;gap:10px;height:80px;padding-top:4px}
+.chart-col{flex:1;text-align:center;font-size:9px;color:#8e9ba8}
+.chart-col .bar{width:100%;max-width:22px;margin:0 auto 4px;border-radius:3px 3px 0 0;background:#6499cc;min-height:2px;transition:.3s}
+.chart-col .bar.green{background:#4db396}.chart-col .bar.gold{background:#c99440}
+</style>
+
+
+<script>
+(function(){var f=window.fetch;window.fetch=function(u,o){o=o||{};if(typeof u==="string"&&u.startsWith("/api/")){o.headers=o.headers||{};var t=localStorage.getItem("admin_token");if(t)o.headers["Authorization"]="Bearer "+t}return f.call(window,u,o)}})();
+</script>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+</head>
+<body>
+<div class="app">
+<div class="side">
+<div class="side-head"><h1>政宣智作</h1><small>管理中心</small></div>
+<div class="nav">
+<div class="nav-item active" data-page="dashboard">📊 概览</div>
+<div class="nav-item" data-page="users">👥 用户管理<span class="badge">8</span></div>
+<div class="nav-item" data-page="orgs">🏛️ 组织管理</div>
+<div class="nav-item" data-page="templates">📋 模板管理</div>
+<div class="nav-item" data-page="billing">💰 额度与计费</div>
+<div class="nav-item" data-page="settings">⚙️ 系统设置</div>
+<div class="nav-item" data-page="logs">📝 操作日志</div>
+</div>
+<div class="side-foot"><div>v0.1.0 · 开发版</div><div style="margin-top:4px"><a href="http://localhost:3000" target="_blank" style="color:#7d9cb5">← 返回前台</a></div></div>
+</div>
+<div class="main">
+<div class="top"><h2 id="pageTitle">概览</h2><span class="page-info" id="pageInfo">系统运行状态</span><div class="top-actions"><button class="btn small" onclick="location.reload()">🔄 刷新</button></div></div>
+<div class="workspace" id="workspace"></div>
+</div>
+</div>
+<script>
+const PAGES = {
+  dashboard: { title: "概览", info: "系统运行状态" },
+  users: { title: "用户管理", info: "管理平台注册用户" },
+  orgs: { title: "组织管理", info: "管理注册单位" },
+  templates:{ title: "模板管理", info: "管理视频模板" },
+  billing: { title: "额度与计费", info: "查看消费与充值记录" },
+  settings:{ title: "系统设置", info: "平台全局配置" },
+  logs: { title: "操作日志", info: "查看管理员操作记录" },
+};
+let currentPage = "dashboard";
+const API = "/api/admin";
+
+function go(page) {
+  currentPage = page;
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.page === page));
+  const info = PAGES[page] || { title: page, info: "" };
+  document.getElementById("pageTitle").textContent = info.title;
+  document.getElementById("pageInfo").textContent = info.info;
+  loadPage(page);
+}
+document.querySelectorAll(".nav-item").forEach(item => {
+  item.addEventListener("click", () => go(item.dataset.page));
+});
+
+function loadPage(name) {
+  const ws = document.getElementById("workspace");
+  if (name === "dashboard") renderDashboard(ws);
+  else if (name === "users") renderUsers(ws);
+  else if (name === "orgs") renderOrgs(ws);
+  else if (name === "templates") renderTemplates(ws);
+  else if (name === "billing") renderBilling(ws);
+  else if (name === "settings") renderSettings(ws);
+  else if (name === "logs") renderLogs(ws);
+}
+
+async function renderDashboard(el) {
+  const res = await fetch(API + "/dashboard");
+  const data = await res.json();
+  const s = data.stats;
+  el.innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="label">注册用户</div><div class="value">${s.totalUsers}</div><div class="sub">活跃 ${s.activeUsers}</div></div>
+      <div class="stat"><div class="label">活跃组织</div><div class="value">${s.activeOrgs}</div><div class="sub">共 ${s.totalProjects} 个项目</div></div>
+      <div class="stat"><div class="label">模板库</div><div class="value">${s.templatesPublished}</div><div class="sub">已发布模板</div></div>
+      <div class="stat"><div class="label">余额</div><div class="value green">¥${s.balance}</div><div class="sub">收入 ¥${s.totalRevenue} · 消费 ¥${s.totalUsage}</div></div>
+    </div>
+    <div class="row">
+      <div class="card">
+        <div class="card-head"><h3>近7日趋势</h3></div>
+        <div class="card-body">
+          <div class="chart-bar">${data.dailyStats.map(d => `<div class="chart-col"><div class="bar" style="height:${Math.max(d.projects*20,4)}px"></div>${d.date}</div>`).join("")}</div>
+          <div style="margin-top:12px;font-size:10px;color:var(--muted)">蓝色柱 = 新建项目数</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>最新交易</h3></div>
+        <div class="card-body" style="padding:6px 14px">
+          ${data.recentBilling.map(b => `<div style="display:flex;padding:6px 0;border-bottom:1px dashed #ecf0f5;font-size:11px"><span class="badge ${b.type==='充值'?'green':'blue'}">${b.type}</span><span style="flex:1;margin:0 8px">${b.org}</span><b>¥${b.amount}</b></div>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-head"><h3>组织项目分布</h3></div>
+      <div class="card-body">
+        <table><tr><th>组织</th><th>项目数</th><th>占比</th></tr>
+        ${data.orgUsage.map(o => `<tr><td>${o.name}</td><td>${o.projects}</td><td>${Math.round(o.projects/data.orgUsage.reduce((a,b)=>a+b.projects,0)*100)}%</td></tr>`).join("")}
+        </table>
+      </div>
+    </div>`;
+}
+
+let userFilter = "";
+async function renderUsers(el) {
+  const q = document.getElementById("userSearch")?.value || "";
+  const url = `${API}/users?q=${encodeURIComponent(q)}${userFilter ? "&status="+userFilter : ""}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h3>全部用户</h3><span class="right">共 ${data.total} 人</span></div>
+      <div class="card-body">
+        <div class="search-bar">
+          <input id="userSearch" placeholder="搜索姓名、组织、手机号..." value="${q}" oninput="renderUsers(document.getElementById('workspace'))">
+          <div class="filter-group">
+            <button class="${!userFilter?'active':''}" onclick="userFilter='';renderUsers(document.getElementById('workspace'))">全部</button>
+            <button class="${userFilter==='active'?'active':''}" onclick="userFilter='active';renderUsers(document.getElementById('workspace'))">活跃</button>
+            <button class="${userFilter==='disabled'?'active':''}" onclick="userFilter='disabled';renderUsers(document.getElementById('workspace'))">已禁用</button>
+          </div>
+          <button class="btn primary small" onclick="showUserModal()">+ 添加用户</button>
+        </div>
+        <table><tr><th>姓名</th><th>组织</th><th>手机号</th><th>角色</th><th>状态</th><th>最近登录</th><th>操作</th></tr>
+        ${data.users.map(u => `<tr>
+          <td><b>${u.name}</b></td><td>${u.org}</td><td>${u.phone}</td>
+          <td><span class="tag">${u.role}</span></td>
+          <td><span class="badge ${u.status==='active'?'green':'red'}">${u.status==='active'?'正常':'已禁用'}</span></td>
+          <td style="font-size:10px;color:var(--muted)">${u.lastLogin}</td>
+          <td><button class="btn xs" onclick="toggleUser('${u.id}')">${u.status==='active'?'禁用':'启用'}</button>
+          <button class="btn xs danger" onclick="deleteUser('${u.id}')">删除</button></td>
+        </tr>`).join("")}
+        </table>
+      </div>
+    </div>`;
+}
+async function toggleUser(id) {
+  const res = await fetch(`${API}/users/${id}`, {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"disabled"})});
+  renderUsers(document.getElementById("workspace"));
+}
+async function deleteUser(id) {
+  if (!confirm("确认删除此用户？")) return;
+  await fetch(`${API}/users/${id}`, {method:"DELETE"});
+  renderUsers(document.getElementById("workspace"));
+}
+function showUserModal() {
+  document.getElementById("modalOverlay").classList.add("show");
+  document.getElementById("modalTitle").textContent = "添加用户";
+  document.getElementById("modalBody").innerHTML = `
+    <div class="form-row"><label>姓名</label><input id="fName" placeholder="请输入姓名"></div>
+    <div class="form-row"><label>组织</label><input id="fOrg" placeholder="请输入组织名称"></div>
+    <div class="form-row"><label>手机号</label><input id="fPhone" placeholder="请输入手机号"></div>
+    <div class="form-row"><label>角色</label><select id="fRole"><option>内容创作</option><option>审核人</option><option>管理员</option></select></div>`;
+  document.getElementById("modalConfirm").onclick = async () => {
+    await fetch(API + "/users", {method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:document.getElementById("fName").value,org:document.getElementById("fOrg").value,phone:document.getElementById("fPhone").value,role:document.getElementById("fRole").value})});
+    document.getElementById("modalOverlay").classList.remove("show");
+    renderUsers(document.getElementById("workspace"));
+  };
+}
+
+async function renderOrgs(el) {
+  const res = await fetch(API+"/orgs");
+  const d = await res.json();
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h3>注册组织</h3><span class="right">共 ${d.orgs.length}</span></div>
+      <div class="card-body">
+        <div style="margin-bottom:10px"><button class="btn primary small" onclick="showOrgModal()">+ 添加组织</button></div>
+        <table><tr><th>组织名称</th><th>简称</th><th>联系人</th><th>用户数</th><th>项目数</th><th>状态</th><th>操作</th></tr>
+        ${d.orgs.map(o => `<tr><td>${o.name}</td><td>${o.short}</td><td>${o.contact}</td><td>${o.users}</td><td>${o.projects}</td>
+          <td><span class="badge ${o.status==='active'?'green':'red'}">${o.status==='active'?'正常':'已禁用'}</span></td>
+          <td><button class="btn xs danger" onclick="deleteOrg('${o.id}')">删除</button></td></tr>`).join("")}
+        </table>
+      </div>
+    </div>`;
+}
+function showOrgModal() {
+  document.getElementById("modalOverlay").classList.add("show");
+  document.getElementById("modalTitle").textContent = "添加组织";
+  document.getElementById("modalBody").innerHTML = `
+    <div class="form-row"><label>组织名称</label><input id="fName" placeholder="例如: 市第一人民医院"></div>
+    <div class="form-row"><label>简称</label><input id="fShort" placeholder="例如: 市一院"></div>
+    <div class="form-row"><label>联系人</label><input id="fContact" placeholder="姓名"></div>
+    <div class="form-row"><label>联系电话</label><input id="fPhone" placeholder="手机号"></div>`;
+  document.getElementById("modalConfirm").onclick = async () => {
+    await fetch(API+"/orgs", {method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:document.getElementById("fName").value,short:document.getElementById("fShort").value,contact:document.getElementById("fContact").value,phone:document.getElementById("fPhone").value})});
+    document.getElementById("modalOverlay").classList.remove("show");
+    renderOrgs(document.getElementById("workspace"));
+  };
+}
+async function deleteOrg(id) {
+  if (!confirm("确认删除此组织？")) return;
+  await fetch(`${API}/orgs/${id}`, {method:"DELETE"});
+  renderOrgs(document.getElementById("workspace"));
+}
+
+async function renderTemplates(el) {
+  const res = await fetch(API+"/templates");
+  const d = await res.json();
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h3>视频模板</h3><span class="right">共 ${d.templates.length}</span></div>
+      <div class="card-body">
+        <div style="margin-bottom:10px"><button class="btn primary small" onclick="showTemplateModal()">+ 新建模板</button></div>
+        <table><tr><th>模板名称</th><th>分类</th><th>场景数</th><th>时长</th><th>使用次数</th><th>状态</th><th>操作</th></tr>
+        ${d.templates.map(t => `<tr><td><b>${t.name}</b><br><small style="color:var(--muted)">${t.description}</small></td>
+          <td><span class="tag">${t.category}</span></td><td>${t.scenes}</td><td>${t.duration}</td><td>${t.usage}</td>
+          <td><span class="badge ${t.status==='published'?'green':'gold'}">${t.status==='published'?'已发布':'草稿'}</span></td>
+          <td><button class="btn xs" onclick="toggleTemplate('${t.id}')">${t.status==='published'?'下架':'发布'}</button>
+          <button class="btn xs danger" onclick="deleteTemplate('${t.id}')">删除</button></td></tr>`).join("")}
+        </table>
+      </div>
+    </div>`;
+}
+function showTemplateModal() {
+  document.getElementById("modalOverlay").classList.add("show");
+  document.getElementById("modalTitle").textContent = "新建模板";
+  document.getElementById("modalBody").innerHTML = `
+    <div class="form-row"><label>模板名称</label><input id="fName" placeholder="例如: 会议简讯·快速版"></div>
+    <div class="form-row"><label>分类</label><select id="fCat"><option>政宣</option><option>科普</option><option>专题</option></select></div>
+    <div class="form-row"><label>场景数</label><input id="fScenes" type="number" value="4"></div>
+    <div class="form-row"><label>时长</label><input id="fDur" placeholder="例如: 30秒"></div>
+    <div class="form-row"><label>描述</label><input id="fDesc" placeholder="适用场景..."></div>`;
+  document.getElementById("modalConfirm").onclick = async () => {
+    await fetch(API+"/templates", {method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:document.getElementById("fName").value,category:document.getElementById("fCat").value,scenes:document.getElementById("fScenes").value,duration:document.getElementById("fDur").value,description:document.getElementById("fDesc").value})});
+    document.getElementById("modalOverlay").classList.remove("show");
+    renderTemplates(document.getElementById("workspace"));
+  };
+}
+async function toggleTemplate(id) {
+  await fetch(API+"/templates/" + id, {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"published"})});
+  renderTemplates(document.getElementById("workspace"));
+}
+async function deleteTemplate(id) {
+  if (!confirm("确认删除此模板？")) return;
+  await fetch(`${API}/templates/${id}`, {method:"DELETE"});
+  renderTemplates(document.getElementById("workspace"));
+}
+
+async function renderBilling(el) {
+  const [res1, res2] = await Promise.all([fetch(API+"/billing"), fetch(API+"/billing/stats")]);
+  const d1 = await res1.json();
+  const d2 = await res2.json();
+  el.innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="label">总收入</div><div class="value green">¥${d2.totalRecharge}</div></div>
+      <div class="stat"><div class="label">总消费</div><div class="value red">¥${d2.totalConsume}</div></div>
+      <div class="stat"><div class="label">平台余额</div><div class="value">¥${d2.balance}</div></div>
+      <div class="stat"><div class="label">待确认</div><div class="value gold">¥${d2.pendingAmount}</div><div class="sub">对公转账待确认</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>组织额度</h3></div>
+      <div class="card-body">
+        <table><tr><th>组织</th><th>充值总额</th><th>消费总额</th><th>可用余额</th></tr>
+        ${d2.orgStats.map(o => `<tr><td>${o.name}</td><td>¥${o.recharge}</td><td>¥${o.consume}</td><td><b class="${o.balance>=0?'green':'red'}">¥${o.balance}</b></td></tr>`).join("")}
+        </table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-head"><h3>交易记录</h3></div>
+      <div class="card-body">
+        <table><tr><th>日期</th><th>组织</th><th>类型</th><th>金额</th><th>方式</th><th>状态</th></tr>
+        ${d1.records.map(r => `<tr><td style="font-size:10px">${r.date}</td><td>${r.org}</td>
+          <td><span class="badge ${r.type==='充值'?'green':'blue'}">${r.type}</span></td>
+          <td><b>¥${r.amount}</b></td><td style="font-size:10px;color:var(--muted)">${r.method}</td>
+          <td><span class="badge ${r.status==='completed'?'green':'gold'}">${r.status==='completed'?'已完成':'待确认'}</span></td></tr>`).join("")}
+        </table>
+      </div>
+    </div>`;
+}
+
+async function renderSettings(el) {
+  const res = await fetch(API+"/settings");
+  const c = (await res.json()).config;
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h3>平台配置</h3></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:700px">
+          <div class="form-row"><label>平台名称</label><input id="sName" value="${c.platformName}"></div>
+          <div class="form-row"><label>公告</label><input id="sNotice" value="${c.notice}"></div>
+          <div class="form-row"><label>默认文生文模型</label><select id="sTextM"><option ${c.defaultModelText==='GPT-4o'?'selected':''}>GPT-4o</option><option ${c.defaultModelText==='Claude 4'?'selected':''}>Claude 4</option></select></div>
+          <div class="form-row"><label>默认文生图模型</label><select id="sImgM"><option ${c.defaultModelImage==='DALL·E 3'?'selected':''}>DALL·E 3</option><option ${c.defaultModelImage==='Midjourney'?'selected':''}>Midjourney</option></select></div>
+          <div class="form-row"><label>默认文生视频模型</label><select id="sVidM"><option ${c.defaultModelVideo==='Sora'?'selected':''}>Sora</option><option ${c.defaultModelVideo==='Runway Gen-4'?'selected':''}>Runway Gen-4</option></select></div>
+          <div class="form-row"><label>每人最大项目数</label><input id="sMaxProj" type="number" value="${c.maxProjectsPerUser}"></div>
+          <div class="form-row"><label>文件上传上限 (MB)</label><input id="sMaxFile" type="number" value="${c.maxFileSize}"></div>
+          <div class="form-row"><label>允许注册</label><select id="sReg"><option value="true" ${c.allowRegister?'selected':''}>开启</option><option value="false" ${!c.allowRegister?'selected':''}>关闭</option></select></div>
+          <div class="form-row"><label>AI 标识</label><select id="sAi"><option value="true" ${c.aiIdentifier?'selected':''}>开启</option><option value="false" ${!c.aiIdentifier?'selected':''}>关闭</option></select></div>
+          <div class="form-row"><label>组织 API</label><select id="sOrgApi"><option value="true" ${c.orgApiEnabled?'selected':''}>开启</option><option value="false" ${!c.orgApiEnabled?'selected':''}>关闭</option></select></div>
+          <div class="form-row"><label>个人 API</label><select id="sPerApi"><option value="true" ${c.personalApiEnabled?'selected':''}>开启</option><option value="false" ${!c.personalApiEnabled?'selected':''}>关闭</option></select></div>
+        </div>
+        <button class="btn primary" style="margin-top:12px" onclick="saveSettings()">保存配置</button>
+      </div>
+    </div>`;
+}
+async function saveSettings() {
+  const body = {
+    platformName: document.getElementById("sName").value,
+    notice: document.getElementById("sNotice").value,
+    defaultModelText: document.getElementById("sTextM").value,
+    defaultModelImage: document.getElementById("sImgM").value,
+    defaultModelVideo: document.getElementById("sVidM").value,
+    maxProjectsPerUser: parseInt(document.getElementById("sMaxProj").value),
+    maxFileSize: parseInt(document.getElementById("sMaxFile").value),
+    allowRegister: document.getElementById("sReg").value === "true",
+    aiIdentifier: document.getElementById("sAi").value === "true",
+    orgApiEnabled: document.getElementById("sOrgApi").value === "true",
+    personalApiEnabled: document.getElementById("sPerApi").value === "true",
+  };
+  await fetch(API+"/settings", {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  alert("配置已保存");
+}
+
+async function renderLogs(el) {
+  const res = await fetch(API+"/logs");
+  const d = await res.json();
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h3>操作日志</h3></div>
+      <div class="card-body">
+        <table><tr><th>时间</th><th>操作人</th><th>操作</th><th>详情</th><th>IP</th></tr>
+        ${d.logs.map(l => `<tr><td style="font-size:10px;white-space:nowrap">${l.time}</td><td>${l.user}</td><td><span class="tag">${l.action}</span></td><td>${l.detail}</td><td style="font-size:10px;color:var(--muted)">${l.ip}</td></tr>`).join("")}
+        </table>
+      </div>
+    </div>`;
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  if (localStorage.getItem("admin_token")) {
+    renderDashboard(document.getElementById("workspace"));
+  }
+});
+</script><style>
+.login-overlay{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0f2438,#152d44);display:flex;align-items:center;justify-content:center}
+.login-card{background:#fff;border-radius:12px;padding:36px 32px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.login-card h2{margin:0 0 4px;font-size:20px;color:#1a2737}
+.login-card p{margin:0 0 20px;font-size:12px;color:#6d7b89}
+.login-card .form-row{margin-bottom:14px}
+.login-card label{display:block;font-size:11px;color:#5d6b7a;margin-bottom:5px}
+.login-card input{width:100%;padding:9px 10px;border:1px solid #dfe4ea;border-radius:6px;font-size:13px;outline:0;box-sizing:border-box;font-family:inherit}
+.login-card input:focus{border-color:#1a6dc9;box-shadow:0 0 0 2px #e7f2fc}
+.login-card .btn{width:100%;padding:10px;border:0;border-radius:6px;font-size:14px;background:#1a6dc9;color:#fff;cursor:pointer;margin-top:4px;font-family:inherit}
+.login-card .btn:hover{background:#155db3}
+.login-card .btn:disabled{opacity:.5;cursor:not-allowed}
+.login-card .login-error{color:#cc4545;font-size:11px;margin-top:8px;display:none}
+.login-card .version{text-align:center;font-size:10px;color:#8e9ba8;margin-top:16px}
+</style>
+<div class="login-overlay" id="loginOverlay">
+<div class="login-card">
+<h2>管理后台</h2>
+<p>政宣智作 - 管理中心</p>
+<div class="form-row"><label>手机号</label><input type="text" id="loginPhone" value="18800000000"></div>
+<div class="form-row"><label>密码</label><input type="password" id="loginPassword" value="123456"></div>
+<button class="btn" id="loginBtn">登 录</button>
+<div class="login-error" id="loginError"></div>
+<div class="version">v0.2.0 | 演示账号 18800000000 / 123456</div>
+</div>
+</div>
+<script>
+var lo = document.getElementById("loginOverlay");
+var t = localStorage.getItem("admin_token");
+if (t) {
+  fetch("/api/auth/me", {headers:{Authorization:"Bearer "+t}}).then(function(r){if(r.ok)lo.style.display="none"}).catch(function(){});
+}
+document.getElementById("loginBtn").addEventListener("click", function(){
+  var btn=this;btn.disabled=true;btn.textContent="登录中...";
+  var err=document.getElementById("loginError");err.style.display="none";
+  fetch("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:document.getElementById("loginPhone").value,password:document.getElementById("loginPassword").value})})
+  .then(function(r){return r.json()})
+  .then(function(d){if(d.success){localStorage.setItem("admin_token",d.token);lo.style.display="none";location.reload()}else{err.textContent=d.error||"登录失败";err.style.display="block";btn.disabled=false;btn.textContent="登 录"}})
+  .catch(function(){err.textContent="网络错误";err.style.display="block";btn.disabled=false;btn.textContent="登 录"});
+});
+</script>
+</body>
+</html>

@@ -145,9 +145,8 @@ def today():
 
 if not DB_PATH.exists():
     init_db()
-    seed_data()
-    print(f"[DB] 数据库已初始化: {DB_PATH}")
+    print(f"[DB] Database initialized: {DB_PATH}")
 else:
-    print(f"[DB] 数据库已存在: {DB_PATH}")
+    print(f"[DB] Database exists: {DB_PATH}")
 
 

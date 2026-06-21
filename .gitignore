@@ -29,3 +29,7 @@ Thumbs.db
 # Env
 .env
 .env.local
+
+# Railway
+.railway/
+*.env

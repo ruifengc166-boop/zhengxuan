@@ -1,12 +1,13 @@
+import os
 import jwt
 import datetime
 import hashlib
 import functools
 from flask import request, jsonify
 
-SECRET_KEY = "zhengxuan-zhizuo-secret-key-2026"
+SECRET_KEY = os.environ.get("JWT_SECRET", "zhengxuan-zhizuo-secret-key-2026")
 ALGORITHM = "HS256"
-TOKEN_EXPIRE_HOURS = 24
+TOKEN_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "24"))
 
 def create_token(user_id, name, role, org_id, org_name):
     payload = {

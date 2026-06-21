@@ -289,7 +289,7 @@ def serve_frontend(subpath):
 
 # ─── Start ──────────────────────────────────────────────────
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 3000))
+    port = int(os.environ.get("PORT", os.environ.get("RAILWAY_PORT", "3000")))
     print("┌─────────────────────────────────────────────┐")
     print(f"│  政宣智作 · 开发服务器 v0.2.0                │")
     print(f"│                                             │")
@@ -299,4 +299,4 @@ if __name__ == "__main__":
     print("└─────────────────────────────────────────────┘")
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}] 服务器已启动")
     print(f"[DB] 数据库已加载")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=os.environ.get("FLASK_DEBUG", "0") == "1" == "1")

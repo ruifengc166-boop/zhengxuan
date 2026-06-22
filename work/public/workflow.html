@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>政宣智作 · 真实工作流</title>
+  <link rel="stylesheet" href="/workflow/styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="mark"></div><div><b>政宣智作</b><span>真实工作流模块</span></div></div>
+    <div class="login">
+      <label>手机号</label><input id="login-phone" placeholder="18800000000">
+      <label>密码</label><input id="login-password" type="password" placeholder="输入密码">
+      <button class="btn primary" id="login-btn">登录并加载项目</button>
+      <div class="statusbar" id="login-status"></div>
+    </div>
+    <div class="nav-title">项目</div>
+    <div class="projects" id="project-list"></div>
+  </aside>
+  <main class="main">
+    <div class="top">
+      <div><h1 id="page-title">真实工作流</h1><p>把高保真原型里的 Brief、资料可信度、视觉资产、结构化分镜接成真实可操作流程。</p></div>
+      <div class="top-actions"><button class="btn" id="reload-btn">刷新</button><button class="btn primary" id="new-project-btn">新建测试项目</button></div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-section="overview">总览</button>
+      <button class="tab" data-section="brief">Brief</button>
+      <button class="tab" data-section="sources">资料可信度</button>
+      <button class="tab" data-section="assets">视觉资产</button>
+      <button class="tab" data-section="storyboard">结构化分镜</button>
+    </div>
+
+    <section id="overview" class="section active">
+      <div class="grid g4" id="readiness-metrics"></div>
+      <div class="blockers" id="readiness-blockers"></div>
+      <div class="grid g2">
+        <div class="card"><div class="card-head"><h2>下一步建议</h2><span>自动判断</span></div><div class="card-body" id="next-actions"><p class="empty">选择项目后显示。</p></div></div>
+        <div class="card"><div class="card-head"><h2>接口调试</h2><span>最近响应</span></div><div class="card-body"><pre class="debug" id="debug">等待操作...</pre></div></div>
+      </div>
+    </section>
+
+    <section id="brief" class="section">
+      <div class="card"><div class="card-head"><h2>项目 Brief</h2><span>传播目标与口径边界</span></div><div class="card-body">
+        <div class="grid g2">
+          <div>
+            <div class="field"><label>宣传目标</label><textarea id="brief-objective"></textarea></div>
+            <div class="field"><label>目标受众</label><input id="brief-audience"></div>
+            <div class="field"><label>语气风格</label><input id="brief-tone"></div>
+          </div>
+          <div>
+            <div class="field"><label>必须出现的信息</label><textarea id="brief-required"></textarea></div>
+            <div class="field"><label>禁用表达</label><textarea id="brief-forbidden"></textarea></div>
+            <button class="btn primary" id="save-brief-btn">保存 Brief</button><span class="statusbar" id="brief-status"></span>
+          </div>
+        </div>
+      </div></div>
+    </section>
+
+    <section id="sources" class="section">
+      <div class="grid g2">
+        <div class="card"><div class="card-head"><h2>上传资料</h2><span>上传后进入可信度管理</span></div><div class="card-body">
+          <div class="drop"><input id="source-file" type="file"><div class="row" style="margin-top:10px"><select id="upload-data-level"><option value="L1">L1 公开/一般资料</option><option value="L2">L2 内部资料</option><option value="L3">L3 敏感资料</option></select><button class="btn primary" id="upload-source-btn">上传</button></div></div>
+          <div class="table-actions"><button class="btn" id="parse-sources-btn">解析全部资料</button><button class="btn" id="reload-sources-btn">刷新资料</button></div><div class="statusbar" id="source-status"></div>
+        </div></div>
+        <div class="card"><div class="card-head"><h2>资料可信度说明</h2><span>给脚本和分镜做引用约束</span></div><div class="card-body"><p class="empty">每份资料都可以设置权威等级、是否可引用、是否可视化、敏感等级。结构化分镜会优先引用可引用资料，并在 Prompt 中保留来源标记。</p></div></div>
+      </div>
+      <div style="height:14px"></div><div id="source-list"></div>
+    </section>
+
+    <section id="assets" class="section">
+      <div class="grid g2">
+        <div class="card"><div class="card-head"><h2>新增视觉资产</h2><span>Logo / 人物 / 场景 / B-roll</span></div><div class="card-body">
+          <div class="field"><label>资产名称</label><input id="asset-title"></div>
+          <div class="row"><div class="field"><label>资产类型</label><select id="asset-type"><option value="logo">Logo</option><option value="person">人物</option><option value="location">场景</option><option value="certificate">证书/荣誉</option><option value="chart">图表</option><option value="broll">B-roll</option><option value="reference">参考素材</option></select></div><div class="field"><label>授权状态</label><select id="asset-auth"><option value="unchecked">未确认</option><option value="authorized">已授权</option><option value="restricted">限制使用</option><option value="forbidden">禁止使用</option></select></div></div>
+          <div class="field"><label>视觉描述</label><textarea id="asset-desc"></textarea></div><button class="btn primary" id="create-asset-btn">新增资产</button><span class="statusbar" id="asset-status"></span>
+        </div></div>
+        <div class="card"><div class="card-head"><h2>资产列表</h2><span>结构化分镜会自动引用</span></div><div class="card-body" id="asset-list"><p class="empty">选择项目后显示。</p></div></div>
+      </div>
+    </section>
+
+    <section id="storyboard" class="section">
+      <div class="card"><div class="card-head"><h2>结构化分镜</h2><span>镜头目的 / 资料引用 / Prompt</span></div><div class="card-body"><div class="row"><input id="story-style" placeholder="纪实、克制、可信、公共服务宣传片"><button class="btn primary" id="generate-storyboard-btn">生成结构化分镜</button></div><div style="height:14px"></div><div id="storyboard-list"><p class="empty">选择项目后显示。</p></div></div></div>
+    </section>
+  </main>
+</div>
+<script type="module" src="/workflow/app.js"></script>
+</body>
+</html>

@@ -1,78 +1,223 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>政宣智作 · 工作流测试台</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>政宣智作 · 可信工作流控制台</title>
   <style>
-    :root{--bg:#f5f7fa;--card:#fff;--line:#dce3ea;--ink:#17202c;--muted:#6a7785;--blue:#226ec8;--green:#1d8f67;--red:#bd3f3f}
-    *{box-sizing:border-box}body{margin:0;font-family:"Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-    .wrap{max-width:1120px;margin:0 auto;padding:28px 18px 60px}.head{display:flex;align-items:flex-end;gap:14px;margin-bottom:18px}
-    h1{font-size:24px;margin:0}.hint{color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:360px 1fr;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 16px rgba(20,40,80,.04);overflow:hidden}.card h2{font-size:15px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}.body{padding:14px 16px}.row{display:flex;gap:8px;margin-bottom:10px}.row>*{flex:1}label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}input,textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;background:#fff}textarea{min-height:84px;resize:vertical}button{border:0;background:var(--blue);color:#fff;border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer}button.secondary{background:#e9eef5;color:#233449}button.green{background:var(--green)}button.red{background:var(--red)}button:disabled{opacity:.5;cursor:not-allowed}.steps{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.step{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff}.step b{display:block;font-size:13px;margin-bottom:8px}.log{height:520px;overflow:auto;background:#101722;color:#dce8f5;border-radius:12px;padding:12px;font:12px/1.5 Consolas,monospace;white-space:pre-wrap}.pill{display:inline-block;font-size:11px;color:#35506e;background:#edf3fa;border-radius:20px;padding:4px 8px;margin-right:5px}.ok{color:#82e0aa}.err{color:#ffb3b3}.small{font-size:12px;color:var(--muted);line-height:1.6}.file{padding:10px;border:1px dashed var(--line);border-radius:10px;background:#fafcff}
+    :root{
+      --bg:#f5f7fb;--paper:#fff;--ink:#172032;--muted:#687386;--line:#dfe6ef;
+      --blue:#1767c0;--blue2:#eef6ff;--green:#248268;--red:#bf4545;--gold:#9a7230;
+      --shadow:0 16px 42px rgba(20,44,78,.08);--r:18px;--r2:12px;
+    }
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#f8fbff,#f2f5fa);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+    button,input,textarea,select{font:inherit}button{cursor:pointer}a{color:inherit}
+    .shell{min-height:100vh;display:grid;grid-template-columns:280px minmax(0,1fr)}
+    aside{background:#0d2339;color:#dbe8f4;padding:28px 20px;position:sticky;top:0;height:100vh;overflow:auto}
+    .brand{display:flex;gap:12px;align-items:center;margin-bottom:28px}.mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#2e82db,#30b6ac);box-shadow:0 14px 34px rgba(0,0,0,.25)}
+    h1{font-size:18px;margin:0}.brand small{display:block;color:#89a8c2;font-size:11px;margin-top:3px}
+    .login{border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.04);border-radius:16px;padding:14px;margin-bottom:18px}
+    .login label{display:block;font-size:11px;color:#90abc3;margin-bottom:6px}.login input{width:100%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:10px;margin-bottom:10px;outline:none}
+    .login input::placeholder{color:#6f8aa2}.login button,.primary{border:0;background:var(--blue);color:#fff;border-radius:11px;padding:10px 13px;font-weight:650}.login button{width:100%}
+    .hint{font-size:11px;line-height:1.65;color:#88a4bb;margin:12px 0 0}.navtitle{font-size:11px;color:#7896ae;margin:22px 6px 10px;letter-spacing:1.2px;text-transform:uppercase}
+    .project-list{display:grid;gap:8px}.project{border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);border-radius:13px;padding:12px;text-align:left;color:#dbe8f4}.project.active{background:rgba(48,139,216,.22);border-color:rgba(91,176,236,.5)}
+    .project b{display:block;font-size:13px}.project span{display:block;font-size:11px;color:#91aac0;margin-top:4px}
+    main{padding:28px 32px 54px;min-width:0}.top{display:flex;align-items:flex-start;gap:18px;margin-bottom:22px}.top h2{font-size:28px;margin:0 0 8px}.top p{color:var(--muted);margin:0;line-height:1.7}.top-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+    .btn{border:1px solid var(--line);background:#fff;border-radius:11px;padding:10px 13px;color:#344052}.btn:hover{border-color:#b7c7da;background:#fbfdff}.btn.ghost{background:transparent}.btn.danger{color:var(--red)}
+    .grid{display:grid;gap:16px}.g2{grid-template-columns:1.1fr .9fr}.g3{grid-template-columns:repeat(3,1fr)}@media(max-width:1080px){.shell{grid-template-columns:1fr}aside{position:relative;height:auto}.g2,.g3{grid-template-columns:1fr}}
+    .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}.card-head{padding:17px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}.card-head h3{margin:0;font-size:15px}.card-head small{color:var(--muted);margin-left:auto}.card-body{padding:18px}
+    .form{display:grid;gap:12px}.field label{display:block;font-size:12px;color:#5f6c7f;margin-bottom:7px}.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;background:#fff;outline:none}.field textarea{min-height:76px;resize:vertical;line-height:1.6}.field input:focus,.field textarea:focus,.field select:focus{border-color:#8eb8e8;box-shadow:0 0 0 3px rgba(23,103,192,.08)}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.metric{background:#fff;border:1px solid var(--line);border-radius:15px;padding:15px}.metric span{display:block;font-size:11px;color:var(--muted)}.metric b{font-size:24px;display:block;margin-top:8px}.ok{color:var(--green)}.warn{color:var(--gold)}.bad{color:var(--red)}
+    .blockers{display:grid;gap:8px;margin-top:12px}.blocker{background:#fff7ed;border:1px solid #f4d6ae;color:#8b5c1f;border-radius:12px;padding:10px 12px;font-size:12px}.pass{background:#edf9f4;border-color:#cceade;color:#236e59}
+    .assets{display:grid;gap:10px}.asset{border:1px solid var(--line);border-radius:14px;padding:13px;background:#fbfdff}.asset b{display:block}.asset span{display:block;color:var(--muted);font-size:12px;margin-top:5px}.tag{display:inline-flex;border-radius:999px;background:var(--blue2);color:#1b63a8;font-size:11px;padding:4px 8px;margin:8px 6px 0 0}.tag.auth{background:#edf8f3;color:#25735d}.tag.risk{background:#fff2f2;color:#a64242}
+    .storyboard{display:grid;gap:14px}.shot{border:1px solid var(--line);border-radius:16px;background:#fff;padding:15px}.shot-head{display:flex;gap:10px;align-items:center;margin-bottom:12px}.shot-num{width:34px;height:34px;border-radius:10px;background:#102b46;color:#fff;display:grid;place-items:center;font-weight:800}.shot h4{margin:0}.shot small{color:var(--muted)}.shot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}.shot-kv{background:#f7f9fc;border:1px solid #e7edf5;border-radius:12px;padding:10px}.shot-kv span{display:block;color:var(--muted);font-size:11px}.shot-kv b{font-size:12px;margin-top:5px;display:block;line-height:1.45}.prompt{background:#0f2135;color:#d9e8f7;border-radius:13px;padding:12px;font-size:12px;line-height:1.7;white-space:pre-wrap;margin-top:10px}
+    .statusbar{min-height:22px;color:var(--muted);font-size:12px;margin-top:10px}.statusbar.error{color:var(--red)}.statusbar.success{color:var(--green)}
+    pre{white-space:pre-wrap;background:#111c2d;color:#d8e7f6;border-radius:14px;padding:14px;max-height:340px;overflow:auto;font-size:12px;line-height:1.6}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="head">
-    <h1>政宣智作 · 工作流测试台</h1>
-    <div class="hint">用于验证资料 → 脚本 → 分镜 → 自检 → 证据包的后端闭环</div>
-  </div>
-  <div class="grid">
-    <div class="card">
-      <h2>登录与项目</h2>
-      <div class="body">
-        <div class="row">
-          <div><label>手机号</label><input id="phone" value="18800000000"></div>
-          <div><label>密码</label><input id="password" type="password" placeholder="输入管理员密码"></div>
-        </div>
-        <div class="row"><button onclick="login()">登录</button><button class="secondary" onclick="loadProjects()">刷新项目</button></div>
-        <label>Token</label><textarea id="token" placeholder="登录后自动填入，也可手动粘贴"></textarea>
-        <label>当前项目 ID</label><input id="projectId" placeholder="选择或输入 project_id">
-        <div class="row"><button class="green" onclick="createProject()">新建测试项目</button><button class="secondary" onclick="loadProjectDetail()">查看详情</button></div>
-        <div class="small">说明：这个页面不替代正式前端，只是开发/部署时快速测试 P1 工作流接口。</div>
-      </div>
+<div class="shell">
+  <aside>
+    <div class="brand"><div class="mark"></div><div><h1>可信工作流控制台</h1><small>政宣智作 v0.7 workflow</small></div></div>
+    <div class="login">
+      <label>手机号</label><input id="phone" placeholder="如 18800000000">
+      <label>密码</label><input id="password" type="password" placeholder="默认测试密码 123456">
+      <button id="loginBtn">登录并加载项目</button>
+      <p class="hint">也可以复用已有登录态；Token 会保存到本地浏览器。</p>
+    </div>
+    <div class="navtitle">项目列表</div>
+    <div id="projectList" class="project-list"></div>
+  </aside>
+  <main>
+    <div class="top">
+      <div><h2 id="pageTitle">选择一个项目</h2><p>先完成 Brief、资料可信度和视觉资产，再生成结构化分镜；这个页面用于验证后端新工作流。</p></div>
+      <div class="top-actions"><button class="btn" id="loadProjects">刷新项目</button><button class="primary" id="generateStoryboard" disabled>生成结构化分镜</button></div>
     </div>
 
-    <div class="card">
-      <h2>执行工作流</h2>
-      <div class="body">
-        <div class="steps">
-          <div class="step"><b>1. 上传资料</b><div class="file"><input id="file" type="file"><select id="dataLevel"><option value="L1">L1 公开资料</option><option value="L2">L2 内部一般资料</option><option value="L3">L3 敏感资料</option></select></div><button onclick="uploadFile()">上传到项目</button></div>
-          <div class="step"><b>2. 资料解析</b><button onclick="parseAllSources()">解析全部资料</button><button class="secondary" onclick="listSources()">查看资料</button></div>
-          <div class="step"><b>3. 脚本生成</b><button onclick="generateScript()">生成脚本初稿</button><button class="secondary" onclick="listScripts()">查看脚本</button></div>
-          <div class="step"><b>4. 分镜 Prompt</b><button onclick="generateStoryboard()">生成分镜 Prompt</button><span class="pill">普通宣传员模式</span></div>
-          <div class="step"><b>5. 发布自检</b><button onclick="runReview()">运行自检</button><span class="pill">来源 / 授权 / 脚本 / 生成任务</span></div>
-          <div class="step"><b>6. 证据包</b><button onclick="createEvidencePackage()">生成证据包 ZIP</button><button class="secondary" onclick="downloadLastExport()">下载上次导出</button></div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <section class="grid g3" id="readinessMetrics"></section>
+    <div id="readinessBlockers" class="blockers"></div>
 
-  <div style="height:16px"></div>
-  <div class="card">
-    <h2>接口返回</h2>
-    <div class="body"><div id="log" class="log">等待操作...</div></div>
-  </div>
+    <div class="grid g2" style="margin-top:18px">
+      <section class="card">
+        <div class="card-head"><h3>项目 Brief</h3><small>传播目标与口径边界</small></div>
+        <div class="card-body">
+          <div class="form">
+            <div class="field"><label>宣传目标</label><textarea id="objective" placeholder="例如：面向公众解释服务升级成果，建立可信认知"></textarea></div>
+            <div class="field"><label>目标受众</label><input id="targetAudience" placeholder="例如：市民、企业、家长、患者、参展观众"></div>
+            <div class="field"><label>语气风格</label><input id="tone" placeholder="克制、可信、清晰、温暖"></div>
+            <div class="field"><label>必须出现的信息</label><textarea id="requiredMessages" placeholder="必须提到的数据、项目名称、服务承诺等"></textarea></div>
+            <div class="field"><label>禁用表达</label><textarea id="forbiddenExpressions" placeholder="不能夸大、不能绝对化、不能虚构荣誉或效果"></textarea></div>
+            <button class="primary" id="saveBrief">保存 Brief</button>
+            <div id="briefStatus" class="statusbar"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h3>视觉资产库</h3><small>Logo / 人物 / 场景 / B-roll</small></div>
+        <div class="card-body">
+          <div class="form">
+            <div class="field"><label>资产名称</label><input id="assetTitle" placeholder="例如：医院门诊大厅 / 单位 Logo / 医生形象照"></div>
+            <div class="field"><label>资产类型</label><select id="assetType"><option value="logo">Logo</option><option value="person">人物</option><option value="location">场景</option><option value="certificate">证书/荣誉</option><option value="chart">图表</option><option value="broll">B-roll</option><option value="reference">参考素材</option></select></div>
+            <div class="field"><label>授权状态</label><select id="assetAuth"><option value="unchecked">未确认</option><option value="authorized">已授权</option><option value="restricted">限制使用</option><option value="forbidden">禁止使用</option></select></div>
+            <div class="field"><label>视觉描述</label><textarea id="assetDesc" placeholder="描述资产外观、用途、可出现的镜头"></textarea></div>
+            <button class="btn" id="createAsset">新增资产</button>
+            <div id="assetStatus" class="statusbar"></div>
+          </div>
+          <div id="assetList" class="assets" style="margin-top:16px"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:18px">
+      <div class="card-head"><h3>结构化分镜结果</h3><small>镜头目的 / 引用 / 景别 / 运镜 / Prompt</small></div>
+      <div class="card-body">
+        <div id="storyboard" class="storyboard"><p style="color:var(--muted);margin:0">点击右上角“生成结构化分镜”后，这里会显示每个镜头的结构和 Prompt。</p></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px">
+      <div class="card-head"><h3>接口响应</h3><small>调试用</small></div>
+      <div class="card-body"><pre id="debug">等待操作...</pre></div>
+    </section>
+  </main>
 </div>
 <script>
-let lastExportUrl = '';
-function getToken(){ return document.getElementById('token').value.trim() || localStorage.getItem('workflow_token') || ''; }
-function projectId(){ return document.getElementById('projectId').value.trim(); }
-function log(data, isError=false){ const el=document.getElementById('log'); const text=typeof data==='string'?data:JSON.stringify(data,null,2); el.innerHTML='<span class="'+(isError?'err':'ok')+'">'+new Date().toLocaleTimeString()+'</span>\n'+text; }
-async function api(url, opts={}){ opts.headers=opts.headers||{}; if(!(opts.body instanceof FormData)) opts.headers['Content-Type']='application/json'; const t=getToken(); if(t) opts.headers.Authorization='Bearer '+t; const res=await fetch(url, opts); const ct=res.headers.get('content-type')||''; const data=ct.includes('application/json')?await res.json():await res.text(); if(!res.ok) throw data; return data; }
-async function login(){ try{ const data=await api('/api/auth/login',{method:'POST',body:JSON.stringify({phone:phone.value,password:password.value})}); token.value=data.token; localStorage.setItem('workflow_token',data.token); log(data); await loadProjects(); }catch(e){log(e,true)} }
-async function loadProjects(){ try{ const data=await api('/api/projects'); log(data); if(data.projects&&data.projects[0]) projectId.value=data.projects[0].id; }catch(e){log(e,true)} }
-async function createProject(){ try{ const data=await api('/api/projects',{method:'POST',body:JSON.stringify({name:'AI宣传片测试项目 '+new Date().toLocaleString(),type:'宣传片',scenes:6,data_level:'L1',publish_channel:'公众号 / 视频号'})}); projectId.value=data.id; log(data); }catch(e){log(e,true)} }
-async function loadProjectDetail(){ try{ log(await api('/api/projects/'+projectId())); }catch(e){log(e,true)} }
-async function uploadFile(){ try{ const f=file.files[0]; if(!f) return log('请选择文件',true); const fd=new FormData(); fd.append('file',f); fd.append('project_id',projectId()); fd.append('data_level',dataLevel.value); const data=await api('/api/upload',{method:'POST',body:fd,headers:{}}); log(data); }catch(e){log(e,true)} }
-async function listSources(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/sources')); }catch(e){log(e,true)} }
-async function parseAllSources(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/sources/parse-all',{method:'POST',body:JSON.stringify({})})); }catch(e){log(e,true)} }
-async function generateScript(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/scripts/generate',{method:'POST',body:JSON.stringify({})})); }catch(e){log(e,true)} }
-async function listScripts(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/scripts')); }catch(e){log(e,true)} }
-async function generateStoryboard(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/storyboard/generate',{method:'POST',body:JSON.stringify({style:'纪实、克制、可信、公共服务宣传片'})})); }catch(e){log(e,true)} }
-async function runReview(){ try{ log(await api('/api/workflow/projects/'+projectId()+'/review/run',{method:'POST',body:JSON.stringify({})})); }catch(e){log(e,true)} }
-async function createEvidencePackage(){ try{ const data=await api('/api/workflow/projects/'+projectId()+'/exports/evidence-package',{method:'POST',body:JSON.stringify({version_label:'测试证据包'})}); lastExportUrl=data.package_url; log(data); }catch(e){log(e,true)} }
-function downloadLastExport(){ if(!lastExportUrl) return log('还没有生成证据包',true); const t=getToken(); fetch(lastExportUrl,{headers:{Authorization:'Bearer '+t}}).then(r=>r.blob()).then(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='evidence-package.zip'; a.click(); }); }
+const $ = id => document.getElementById(id);
+let token = localStorage.getItem('zx_token') || localStorage.getItem('workflow_token') || '';
+let currentProject = null;
+let projects = [];
+
+function setDebug(data){ $('debug').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2); }
+function setStatus(id, text, type=''){ const el=$(id); el.textContent=text; el.className='statusbar '+type; }
+function headers(){ return {'Content-Type':'application/json', ...(token ? {'Authorization':'Bearer '+token} : {})}; }
+async function api(path, options={}){
+  const res = await fetch(path, {...options, headers:{...headers(), ...(options.headers||{})}});
+  const text = await res.text();
+  let data; try{ data = text ? JSON.parse(text) : {}; }catch{ data = {raw:text}; }
+  if(!res.ok){ throw new Error(data.error || data.message || res.status + ' ' + res.statusText); }
+  return data;
+}
+
+async function login(){
+  const phone = $('phone').value.trim();
+  const password = $('password').value || '123456';
+  const data = await api('/api/auth/login', {method:'POST', body:JSON.stringify({phone,password})});
+  token = data.token; localStorage.setItem('zx_token', token); localStorage.setItem('workflow_token', token); setDebug(data); await loadProjects();
+}
+
+async function loadProjects(){
+  if(!token){ setDebug('请先登录。'); return; }
+  const data = await api('/api/projects');
+  projects = data.projects || [];
+  $('projectList').innerHTML = projects.map(p=>`<button class="project" data-id="${p.id}"><b>${escapeHtml(p.name)}</b><span>${escapeHtml(p.project_type||'宣传片')} · ${escapeHtml(p.status||'')}</span></button>`).join('') || '<p class="hint">暂无项目</p>';
+  document.querySelectorAll('.project').forEach(btn=>btn.onclick=()=>selectProject(btn.dataset.id));
+  setDebug(data);
+}
+
+async function selectProject(id){
+  currentProject = projects.find(p=>p.id===id) || {id};
+  document.querySelectorAll('.project').forEach(b=>b.classList.toggle('active', b.dataset.id===id));
+  $('pageTitle').textContent = currentProject.name || id;
+  $('generateStoryboard').disabled = false;
+  await Promise.all([loadBrief(), loadAssets(), loadReadiness()]);
+}
+
+async function loadBrief(){
+  const data = await api(`/api/workflow/projects/${currentProject.id}/brief`);
+  const p = data.project || {};
+  $('objective').value = p.objective || '';
+  $('targetAudience').value = p.target_audience || '';
+  $('tone').value = p.tone || '';
+  $('requiredMessages').value = p.required_messages || '';
+  $('forbiddenExpressions').value = p.forbidden_expressions || '';
+  setDebug(data);
+}
+
+async function saveBrief(){
+  const payload = {
+    objective:$('objective').value,
+    target_audience:$('targetAudience').value,
+    tone:$('tone').value,
+    required_messages:$('requiredMessages').value,
+    forbidden_expressions:$('forbiddenExpressions').value
+  };
+  const data = await api(`/api/workflow/projects/${currentProject.id}/brief`, {method:'PUT', body:JSON.stringify(payload)});
+  setStatus('briefStatus','Brief 已保存','success'); setDebug(data); await loadReadiness();
+}
+
+async function loadAssets(){
+  const data = await api(`/api/workflow/projects/${currentProject.id}/assets`);
+  renderAssets(data.assets || []); setDebug(data);
+}
+
+async function createAsset(){
+  const payload = {
+    title:$('assetTitle').value || '未命名资产',
+    asset_type:$('assetType').value,
+    auth_status:$('assetAuth').value,
+    visual_description:$('assetDesc').value
+  };
+  const data = await api(`/api/workflow/projects/${currentProject.id}/assets`, {method:'POST', body:JSON.stringify(payload)});
+  $('assetTitle').value=''; $('assetDesc').value=''; setStatus('assetStatus','资产已新增','success'); setDebug(data); await loadAssets(); await loadReadiness();
+}
+
+function renderAssets(items){
+  $('assetList').innerHTML = items.map(a=>`<div class="asset"><b>${escapeHtml(a.title||'未命名资产')}</b><span>${escapeHtml(a.visual_description||'暂无描述')}</span><i class="tag">${escapeHtml(a.asset_type||'reference')}</i><i class="tag ${a.auth_status==='authorized'?'auth':'risk'}">${escapeHtml(a.auth_status||'unchecked')}</i></div>`).join('') || '<p style="color:var(--muted);font-size:13px">暂无视觉资产。建议先添加 Logo、关键场景、人物授权照。</p>';
+}
+
+async function loadReadiness(){
+  const data = await api(`/api/workflow/projects/${currentProject.id}/readiness`);
+  const c = data.counts || {};
+  const metrics = [
+    ['资料', c.sources||0, c.parsed_sources===c.sources && c.sources>0 ? 'ok':'warn'],
+    ['资产', c.assets||0, c.authorized_assets===c.assets && c.assets>0 ? 'ok':'warn'],
+    ['脚本', c.scripts||0, c.scripts>0 ? 'ok':'bad'],
+    ['结构化镜头', c.structured_scenes||0, c.structured_scenes>0 ? 'ok':'bad']
+  ];
+  $('readinessMetrics').innerHTML = metrics.map(m=>`<div class="metric"><span>${m[0]}</span><b class="${m[2]}">${m[1]}</b></div>`).join('');
+  const blockers = data.blockers || [];
+  $('readinessBlockers').innerHTML = blockers.length ? blockers.map(b=>`<div class="blocker">${escapeHtml(b)}</div>`).join('') : '<div class="blocker pass">当前没有阻断项，可以继续推进。</div>';
+  setDebug(data);
+}
+
+async function generateStoryboard(){
+  const data = await api(`/api/workflow/projects/${currentProject.id}/storyboard/structure`, {method:'POST', body:JSON.stringify({style:$('tone').value || '纪实、克制、可信、公共服务宣传片'})});
+  renderStoryboard(data.storyboard || []); setDebug(data); await loadReadiness();
+}
+
+function renderStoryboard(items){
+  $('storyboard').innerHTML = items.map((s,i)=>`<article class="shot"><div class="shot-head"><div class="shot-num">${String(i+1).padStart(2,'0')}</div><div><h4>${escapeHtml(s.scene_name||'镜头')}</h4><small>${escapeHtml(s.scene_goal||'')}</small></div></div><div class="shot-grid"><div class="shot-kv"><span>资料引用</span><b>${escapeHtml((s.source_citations||[]).join('、') || '待补')}</b></div><div class="shot-kv"><span>景别 / 运镜</span><b>${escapeHtml((s.shot_size||'')+' / '+(s.camera_movement||''))}</b></div><div class="shot-kv"><span>生成模式</span><b>${escapeHtml(s.generation_mode||'')}</b></div><div class="shot-kv"><span>视觉主体</span><b>${escapeHtml(s.visual_subject||'')}</b></div><div class="shot-kv"><span>场景</span><b>${escapeHtml(s.location||'')}</b></div><div class="shot-kv"><span>字幕</span><b>${escapeHtml(s.subtitle_text||'')}</b></div></div><div class="prompt">图片 Prompt：\n${escapeHtml(s.image_prompt||'')}\n\n视频 Prompt：\n${escapeHtml(s.video_prompt||'')}</div></article>`).join('') || '<p style="color:var(--muted)">没有生成分镜。</p>';
+}
+
+function escapeHtml(str){ return String(str||'').replace(/[&<>'"]/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
+
+$('loginBtn').onclick = () => login().catch(e=>setDebug(e.message));
+$('loadProjects').onclick = () => loadProjects().catch(e=>setDebug(e.message));
+$('saveBrief').onclick = () => saveBrief().catch(e=>setStatus('briefStatus', e.message, 'error'));
+$('createAsset').onclick = () => createAsset().catch(e=>setStatus('assetStatus', e.message, 'error'));
+$('generateStoryboard').onclick = () => generateStoryboard().catch(e=>setDebug(e.message));
+if(token){ loadProjects().catch(e=>setDebug(e.message)); }
 </script>
 </body>
 </html>

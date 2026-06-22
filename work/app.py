@@ -21,6 +21,7 @@ from auth import create_token, login_required, is_admin_role
 from admin_routes import admin
 from workflow_routes import workflow
 from platform_workflow_routes import platform_workflow
+from source_trust_routes import source_trust
 from model_config_routes import model_config_api
 from registration_routes import registration
 from model_config import resolve_model_config
@@ -39,6 +40,7 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_UPLOAD_MB", "500")) *
 app.register_blueprint(admin)
 app.register_blueprint(workflow)
 app.register_blueprint(platform_workflow)
+app.register_blueprint(source_trust)
 app.register_blueprint(model_config_api)
 app.register_blueprint(registration)
 
@@ -326,18 +328,20 @@ def upload_file():
         """,
         (fid, safe_name, original_name, ext, fsize, request.current_user["uid"], project_id, org_id, file.mimetype or "", data_level, "local")
     )
+    source_id = ""
     if project_id:
+        source_id = gen_id("src")
         db.execute(
             """
             INSERT INTO project_sources (id,project_id,org_id,file_id,title,source_type,data_level,parse_status,created_by)
             VALUES (?,?,?,?,?,?,?,?,?)
             """,
-            (gen_id("src"), project_id, org_id, fid, original_name, "file", data_level, "pending", request.current_user["uid"])
+            (source_id, project_id, org_id, fid, original_name, "file", data_level, "pending", request.current_user["uid"])
         )
     db.commit()
     db.close()
     log_current_user("upload_file", f"上传文件 {original_name} 到项目 {project_id or '-'}")
-    return jsonify({"success": True, "file": {"id": fid, "url": f"/uploads/{safe_name}", "original_name": original_name, "size": fsize, "type": ext, "data_level": data_level, "parse_status": "pending"}})
+    return jsonify({"success": True, "file": {"id": fid, "source_id": source_id, "url": f"/uploads/{safe_name}", "original_name": original_name, "size": fsize, "type": ext, "data_level": data_level, "parse_status": "pending"}})
 
 
 @app.route("/uploads/<filename>")

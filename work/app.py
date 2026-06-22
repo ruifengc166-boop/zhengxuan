@@ -20,9 +20,11 @@ from database import (
 from auth import create_token, login_required, is_admin_role
 from admin_routes import admin
 from workflow_routes import workflow
+from platform_workflow_routes import platform_workflow
 from model_config_routes import model_config_api
 from registration_routes import registration
 from model_config import resolve_model_config
+from services.generation_service import build_generation_submission_plan, list_generation_capabilities
 
 app = Flask(__name__, static_folder="public", static_url_path="")
 
@@ -36,6 +38,7 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_UPLOAD_MB", "500")) *
 
 app.register_blueprint(admin)
 app.register_blueprint(workflow)
+app.register_blueprint(platform_workflow)
 app.register_blueprint(model_config_api)
 app.register_blueprint(registration)
 
@@ -283,6 +286,12 @@ def list_templates():
     return jsonify({"templates": [dict(r) for r in rows]})
 
 
+@app.route("/api/generate/capabilities")
+@login_required
+def generation_capabilities():
+    return jsonify({"adapters": list_generation_capabilities()})
+
+
 @app.route("/api/upload", methods=["POST"])
 @login_required
 def upload_file():
@@ -387,12 +396,14 @@ def create_generation_task(task_type, payload):
     task_id = gen_id("task")
     prompt = payload.get("prompt", "")
     api_source = payload.get("api_source") or model_config.get("api_source") or model_config.get("scope", "platform")
-    status = "queued" if model_config.get("api_key") else "simulated"
-    progress = 0 if status == "queued" else 100
     safe_payload = dict(payload)
     safe_payload["api_config_id"] = model_config.get("api_config_id", "")
     safe_payload["model_base_url"] = model_config.get("base_url", "")
     safe_payload.pop("api_key", None)
+    adapter_plan = build_generation_submission_plan(task_type, model_config, safe_payload)
+    safe_payload["adapter_plan"] = adapter_plan
+    status = "queued" if model_config.get("api_key") else "simulated"
+    progress = 0 if status == "queued" else 100
     db.execute(
         """
         INSERT INTO generation_tasks (id,org_id,project_id,scene_id,task_type,status,progress,provider,model_name,api_source,prompt,params_json,estimated_cost,created_by,updated_at)
@@ -400,10 +411,33 @@ def create_generation_task(task_type, payload):
         """,
         (task_id, org_id, project_id, scene_id, task_type, status, progress, model_config["provider"], model_config["model"], api_source, prompt, json.dumps(safe_payload, ensure_ascii=False), float(payload.get("estimated_cost") or 0), request.current_user["uid"], now())
     )
+    db.execute(
+        """
+        INSERT INTO generation_adapter_runs (id,task_id,provider,model_name,adapter_name,request_json,status,updated_at)
+        VALUES (?,?,?,?,?,?,?,?)
+        """,
+        (
+            gen_id("gar"), task_id, model_config["provider"], model_config["model"],
+            adapter_plan.get("adapter_name", ""), json.dumps(adapter_plan.get("request", {}), ensure_ascii=False),
+            "planned" if adapter_plan.get("ready") else "simulated", now()
+        )
+    )
     db.commit()
     db.close()
     log_current_user("create_generation_task", f"{task_type} task {task_id} project={project_id or '-'}")
-    return {"taskId": task_id, "status": status, "progress": progress, "provider": model_config["provider"], "model": model_config["model"], "api_source": api_source, "api_config_id": model_config.get("api_config_id", ""), "estimate": "约 30 秒" if task_type == "image" else "约 1-3 分钟", "message": "已读取后台 API 配置并创建任务；下一步需要接入供应商任务提交适配器。" if status == "queued" else "当前为模拟模式：未找到启用的后台 API Key 或环境变量 API Key。"}, None
+    message = adapter_plan.get("message") or "已创建生成任务。"
+    return {
+        "taskId": task_id,
+        "status": status,
+        "progress": progress,
+        "provider": model_config["provider"],
+        "model": model_config["model"],
+        "api_source": api_source,
+        "api_config_id": model_config.get("api_config_id", ""),
+        "adapter_plan": adapter_plan,
+        "estimate": "约 30 秒" if task_type == "image" else "约 1-3 分钟",
+        "message": message,
+    }, None
 
 
 @app.route("/api/generate/images", methods=["POST"])
@@ -437,8 +471,10 @@ def generation_status(task_id):
         db.close()
         return jsonify({"error": "无权访问该任务"}), 403
     candidates = [dict(r) for r in db.execute("SELECT * FROM generation_candidates WHERE task_id=?", (task_id,)).fetchall()]
+    adapter_runs = [dict(r) for r in db.execute("SELECT * FROM generation_adapter_runs WHERE task_id=? ORDER BY created_at DESC", (task_id,)).fetchall()]
     result = dict(task)
     result["candidates"] = candidates
+    result["adapter_runs"] = adapter_runs
     db.close()
     return jsonify({"task": result})
 
@@ -457,6 +493,7 @@ def retry_generation():
         db.close()
         return jsonify({"error": "无权重试该任务"}), 403
     payload = json.loads(old["params_json"] or "{}")
+    payload.pop("adapter_plan", None)
     payload.update(data.get("overrides") or {})
     db.close()
     result, error = create_generation_task(old["task_type"], payload)
@@ -468,7 +505,7 @@ def retry_generation():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.6.0"})
+    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.7.0"})
 
 
 @app.route("/admin/")
@@ -498,7 +535,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", "3002"))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     print("┌─────────────────────────────────────────────┐")
-    print(f"│  政宣智作 · 开发服务器 v0.6.0                │")
+    print(f"│  政宣智作 · 开发服务器 v0.7.0                │")
     print(f"│  前端:  http://localhost:{port}                │")
     print(f"│  API:   http://localhost:{port}/api           │")
     print(f"│  管理后台: http://localhost:{port}/admin/      │")

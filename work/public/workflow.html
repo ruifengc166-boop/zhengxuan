@@ -21,7 +21,7 @@
   </aside>
   <main class="main">
     <div class="top">
-      <div><h1 id="page-title">真实工作流</h1><p>把高保真原型里的 Brief、资料可信度、视觉资产、结构化分镜和生成队列接成真实可操作流程。</p></div>
+      <div><h1 id="page-title">真实工作流</h1><p>把高保真原型里的 Brief、资料可信度、视觉资产、结构化分镜、生成队列和候选锁定接成真实可操作流程。</p></div>
       <div class="top-actions"><button class="btn" id="reload-btn">刷新</button><button class="btn primary" id="new-project-btn">新建测试项目</button></div>
     </div>
     <div class="tabs">
@@ -88,14 +88,17 @@
     <section id="generation" class="section">
       <div class="grid g2">
         <div class="card"><div class="card-head"><h2>生成任务创建</h2><span>从结构化分镜进入任务队列</span></div><div class="card-body">
-          <p class="empty">创建任务不会直接展示成片结果；当前会写入 generation_tasks 和 generation_adapter_runs，并生成供应商 adapter plan。若已配置 API Key，状态为 queued；否则为 simulated。</p>
-          <div class="table-actions"><button class="btn primary" id="create-image-batch-btn">创建图片任务</button><button class="btn primary" id="create-video-batch-btn">创建视频任务</button><button class="btn success" id="create-both-batch-btn">图片 + 视频</button><button class="btn" id="reload-generation-btn">刷新队列</button></div>
+          <p class="empty">创建任务会写入 generation_tasks 和 generation_adapter_runs；运行 worker 后会回写 generation_candidates。当前 worker 是模拟执行器，用于打通生产闭环。</p>
+          <div class="table-actions"><button class="btn primary" id="create-image-batch-btn">创建图片任务</button><button class="btn primary" id="create-video-batch-btn">创建视频任务</button><button class="btn success" id="create-both-batch-btn">图片 + 视频</button><button class="btn" id="run-worker-btn">运行 worker</button><button class="btn" id="reload-generation-btn">刷新队列</button></div>
           <div class="statusbar" id="generation-status"></div>
         </div></div>
         <div class="card"><div class="card-head"><h2>镜头 Prompt 准备度</h2><span>按镜头检查</span></div><div class="card-body" id="generation-plan-list"><p class="empty">选择项目后显示。</p></div></div>
       </div>
       <div style="height:14px"></div>
-      <div class="card"><div class="card-head"><h2>任务队列</h2><span>最近 100 个任务</span></div><div class="card-body" id="generation-task-list"><p class="empty">暂无任务。</p></div></div>
+      <div class="grid g2">
+        <div class="card"><div class="card-head"><h2>任务队列</h2><span>最近 100 个任务</span></div><div class="card-body" id="generation-task-list"><p class="empty">暂无任务。</p></div></div>
+        <div class="card"><div class="card-head"><h2>候选结果</h2><span>可锁定到镜头</span></div><div class="card-body" id="candidate-list"><p class="empty">运行 worker 后显示候选结果。</p></div></div>
+      </div>
     </section>
   </main>
 </div>

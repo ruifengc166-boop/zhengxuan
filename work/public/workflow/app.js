@@ -1,7 +1,7 @@
 import { WorkflowAPI, tokenStore } from './api.js';
 
 const $ = (id) => document.getElementById(id);
-const state = { projects: [], projectId: '', project: null, sources: [], assets: [], storyboard: [], generation: {scene_plans: [], tasks: []} };
+const state = { projects: [], projectId: '', project: null, sources: [], assets: [], storyboard: [], generation: {scene_plans: [], tasks: []}, candidates: [] };
 
 function escapeHtml(value){ return String(value ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
 function debug(data){ $('debug').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2); }
@@ -18,12 +18,8 @@ function bindTabs(){
 }
 
 async function login(){
-  const phone = $('login-phone').value.trim();
-  const password = $('login-password').value;
-  const data = await WorkflowAPI.login(phone, password);
-  status('login-status', '登录成功', 'success');
-  debug(data);
-  await loadProjects();
+  const data = await WorkflowAPI.login($('login-phone').value.trim(), $('login-password').value);
+  status('login-status', '登录成功', 'success'); debug(data); await loadProjects();
 }
 
 async function loadProjects(){
@@ -41,32 +37,25 @@ async function createProject(){
     type: '宣传片', scenes: 6, data_level: 'L1', publish_channel: '官网 / 视频号', aspect_ratio: '16:9', duration_target: '90s',
     script: '一、开场：以真实业务场景建立可信度。\n二、背景：说明项目来源、服务对象和公共价值。\n三、做法：呈现工作流程和一线行动。\n四、成效：以可核查资料展示成果。\n五、结尾：回到服务承诺和发布复核。'
   });
-  state.projectId = data.id;
-  debug(data);
-  await loadProjects();
-  await selectProject(data.id);
+  state.projectId = data.id; debug(data); await loadProjects(); await selectProject(data.id);
 }
 
 async function selectProject(projectId){
   state.projectId = projectId;
   document.querySelectorAll('[data-project-id]').forEach(x => x.classList.toggle('active', x.dataset.projectId === projectId));
-  const [project, brief, sources, assets, readiness, generation] = await Promise.all([
-    WorkflowAPI.project(projectId), WorkflowAPI.brief(projectId), WorkflowAPI.sources(projectId), WorkflowAPI.assets(projectId), WorkflowAPI.readiness(projectId), WorkflowAPI.generationQueue(projectId)
+  const [project, brief, sources, assets, readiness, generation, candidates] = await Promise.all([
+    WorkflowAPI.project(projectId), WorkflowAPI.brief(projectId), WorkflowAPI.sources(projectId), WorkflowAPI.assets(projectId), WorkflowAPI.readiness(projectId), WorkflowAPI.generationQueue(projectId), WorkflowAPI.candidates(projectId)
   ]);
   state.project = project.project;
   state.sources = sources.sources || [];
   state.assets = assets.assets || [];
   state.generation = generation || {scene_plans: [], tasks: []};
+  state.candidates = candidates.candidates || [];
   state.storyboard = (project.project?.scenes || []).filter(s => s.scene_goal).map(sceneToStoryboard);
   $('page-title').textContent = state.project?.name || '真实工作流';
   renderBrief(brief.project || {});
-  renderSources();
-  renderAssets();
-  renderReadiness(readiness);
-  renderStoryboard(state.storyboard);
-  renderGenerationQueue();
-  renderNextActions(readiness);
-  debug({project, brief, sources, assets, readiness, generation});
+  renderSources(); renderAssets(); renderReadiness(readiness); renderStoryboard(state.storyboard); renderGenerationQueue(); renderCandidateList(); renderNextActions(readiness);
+  debug({project, brief, sources, assets, readiness, generation, candidates});
 }
 
 function renderBrief(project){
@@ -77,12 +66,10 @@ function renderBrief(project){
   $('brief-forbidden').value = project.forbidden_expressions || '';
   $('story-style').value = project.tone || '纪实、克制、可信、公共服务宣传片';
 }
-
 async function saveBrief(){
   requireProject();
   const payload = { objective: $('brief-objective').value, target_audience: $('brief-audience').value, tone: $('brief-tone').value, required_messages: $('brief-required').value, forbidden_expressions: $('brief-forbidden').value };
-  const data = await WorkflowAPI.saveBrief(state.projectId, payload);
-  status('brief-status', '已保存', 'success'); debug(data); await refreshCurrent();
+  const data = await WorkflowAPI.saveBrief(state.projectId, payload); status('brief-status', '已保存', 'success'); debug(data); await refreshCurrent();
 }
 
 function renderReadiness(data){
@@ -92,10 +79,9 @@ function renderReadiness(data){
   const blockers = data.blockers || [];
   $('readiness-blockers').innerHTML = blockers.length ? blockers.map(b => `<div class="blocker">${escapeHtml(b)}</div>`).join('') : '<div class="blocker pass">当前没有阻断项，可以继续生成或交付。</div>';
 }
-
 function renderNextActions(data){
   const blockers = data.blockers || [];
-  const actions = blockers.length ? blockers : ['完善视觉资产授权', '生成结构化分镜', '创建图片/视频生成任务', '发布前运行自检并导出证据包'];
+  const actions = blockers.length ? blockers : ['完善视觉资产授权', '生成结构化分镜', '创建图片/视频生成任务', '运行 worker 生成候选', '锁定候选并进入发布自检'];
   $('next-actions').innerHTML = actions.map((x,i) => `<div class="source-card"><div class="source-head"><div class="trusted-mark ${i===0?'risk-mark':''}">${i+1}</div><div><b>${escapeHtml(x)}</b><small>系统根据当前项目状态自动给出</small></div></div></div>`).join('');
 }
 
@@ -105,7 +91,6 @@ function renderSources(){
   document.querySelectorAll('[data-save-source]').forEach(btn => btn.addEventListener('click', () => saveSourceTrust(btn.dataset.saveSource)));
   document.querySelectorAll('[data-parse-source]').forEach(btn => btn.addEventListener('click', () => parseOneSource(btn.dataset.parseSource)));
 }
-
 async function saveSourceTrust(sourceId){ const card = document.querySelector(`[data-source-card="${sourceId}"]`); const payload = {}; card.querySelectorAll('[data-field]').forEach(el => payload[el.dataset.field] = el.value); const data = await WorkflowAPI.saveSourceTrust(sourceId, payload); status('source-status', '资料可信度已保存', 'success'); debug(data); await refreshSources(); }
 async function parseOneSource(sourceId){ const data = await fetch(`/api/workflow/sources/${sourceId}/parse`, {method:'POST', headers:{Authorization:`Bearer ${tokenStore.get()}`}}).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.error || d.message || r.statusText); return d; }); status('source-status', '资料已提交解析', 'success'); debug(data); await refreshSources(); }
 async function uploadSource(){ requireProject(); const file = $('source-file').files[0]; if(!file) throw new Error('请选择文件'); const data = await WorkflowAPI.uploadSource(state.projectId, file, $('upload-data-level').value); status('source-status', '资料已上传', 'success'); debug(data); await refreshSources(); }
@@ -123,10 +108,16 @@ function renderGenerationQueue(){
   const plans = state.generation.scene_plans || [];
   const tasks = state.generation.tasks || [];
   $('generation-plan-list').innerHTML = plans.map(p => `<div class="source-card"><div class="source-head"><div class="trusted-mark">${String(p.scene_order || '').padStart(2,'0')}</div><div><b>${escapeHtml(p.scene_name || '镜头')}</b><small>${escapeHtml(p.status || '')} · ${escapeHtml(p.generation_mode || '')}</small></div></div><span class="pill ${p.has_image_prompt?'ok':'warn'}">${p.has_image_prompt?'图片 Prompt 已就绪':'缺图片 Prompt'}</span><span class="pill ${p.has_video_prompt?'ok':'warn'}">${p.has_video_prompt?'视频 Prompt 已就绪':'缺视频 Prompt'}</span></div>`).join('') || '<p class="empty">暂无镜头。先创建项目或生成结构化分镜。</p>';
-  $('generation-task-list').innerHTML = tasks.map(t => { const adapter = (t.adapter_runs || [])[0] || {}; return `<div class="source-card"><div class="source-head"><div class="trusted-mark ${t.status==='queued'?'':'risk-mark'}">${t.task_type === 'video' ? 'V' : 'I'}</div><div><b>${escapeHtml(t.scene_id || '项目任务')} · ${escapeHtml(t.task_type)}</b><small>${escapeHtml(t.provider || '')} / ${escapeHtml(t.model_name || '')} · ${escapeHtml(t.status || '')} · ${escapeHtml(adapter.adapter_name || '')}</small></div></div><div class="prompt">${escapeHtml(t.prompt || '')}</div></div>`; }).join('') || '<p class="empty">暂无任务。先点击上方按钮创建图片或视频任务。</p>';
+  $('generation-task-list').innerHTML = tasks.map(t => { const adapter = (t.adapter_runs || [])[0] || {}; return `<div class="source-card"><div class="source-head"><div class="trusted-mark ${t.status==='completed'?'ok':t.status==='queued'?'':'risk-mark'}">${t.task_type === 'video' ? 'V' : 'I'}</div><div><b>${escapeHtml(t.scene_id || '项目任务')} · ${escapeHtml(t.task_type)}</b><small>${escapeHtml(t.provider || '')} / ${escapeHtml(t.model_name || '')} · ${escapeHtml(t.status || '')} · ${escapeHtml(adapter.adapter_name || '')}</small></div></div><div class="prompt">${escapeHtml(t.prompt || '')}</div></div>`; }).join('') || '<p class="empty">暂无任务。先点击上方按钮创建图片或视频任务。</p>';
 }
-async function refreshGenerationQueue(){ requireProject(); const data = await WorkflowAPI.generationQueue(state.projectId); state.generation = data; renderGenerationQueue(); debug(data); }
+function renderCandidateList(){
+  $('candidate-list').innerHTML = state.candidates.map(c => `<div class="source-card"><div class="source-head"><div class="trusted-mark ${c.locked?'ok':'risk-mark'}">${c.candidate_type === 'video' ? 'V' : 'I'}</div><div><b>${escapeHtml(c.scene_name || c.scene_id || '候选')}</b><small>${escapeHtml(c.candidate_type)} · ${escapeHtml(c.status)} · ${escapeHtml(c.file_url)}</small></div></div><span class="pill ${c.locked?'ok':'warn'}">${c.locked?'已锁定':'待确认'}</span><span class="pill ${c.score?.risk==='low'?'ok':'warn'}">风险：${escapeHtml(c.score?.risk || 'unchecked')}</span><div class="prompt">${escapeHtml(c.prompt || '')}</div><div class="table-actions"><button class="btn primary" data-lock-candidate="${c.id}" ${c.locked?'disabled':''}>锁定到镜头</button></div></div>`).join('') || '<p class="empty">暂无候选。先创建任务，再运行 worker。</p>';
+  document.querySelectorAll('[data-lock-candidate]').forEach(btn => btn.addEventListener('click', () => lockCandidate(btn.dataset.lockCandidate)));
+}
+async function refreshGenerationQueue(){ requireProject(); const [queue, candidates] = await Promise.all([WorkflowAPI.generationQueue(state.projectId), WorkflowAPI.candidates(state.projectId)]); state.generation = queue; state.candidates = candidates.candidates || []; renderGenerationQueue(); renderCandidateList(); debug({queue, candidates}); }
 async function createGenerationBatch(taskType){ requireProject(); const data = await WorkflowAPI.createGenerationBatch(state.projectId, {task_type: taskType}); status('generation-status', `已创建 ${data.created?.length || 0} 个任务，跳过 ${data.skipped?.length || 0} 个`, 'success'); debug(data); await refreshGenerationQueue(); }
+async function runWorker(){ requireProject(); const data = await WorkflowAPI.runGenerationWorker(state.projectId, {limit: 20}); status('generation-status', `worker 已处理 ${data.processed || 0} 个任务`, 'success'); debug(data); await refreshGenerationQueue(); }
+async function lockCandidate(candidateId){ const data = await WorkflowAPI.lockCandidate(candidateId); status('generation-status', '候选已锁定到镜头', 'success'); debug(data); await refreshCurrent(); }
 
 async function refreshSources(){ const data = await WorkflowAPI.sources(state.projectId); state.sources = data.sources || []; renderSources(); const r = await WorkflowAPI.readiness(state.projectId); renderReadiness(r); renderNextActions(r); }
 async function refreshAssets(){ const data = await WorkflowAPI.assets(state.projectId); state.assets = data.assets || []; renderAssets(); const r = await WorkflowAPI.readiness(state.projectId); renderReadiness(r); renderNextActions(r); }
@@ -146,6 +137,7 @@ function bindActions(){
   $('create-image-batch-btn').addEventListener('click', () => createGenerationBatch('image').catch(e => status('generation-status', e.message, 'error')));
   $('create-video-batch-btn').addEventListener('click', () => createGenerationBatch('video').catch(e => status('generation-status', e.message, 'error')));
   $('create-both-batch-btn').addEventListener('click', () => createGenerationBatch('both').catch(e => status('generation-status', e.message, 'error')));
+  $('run-worker-btn').addEventListener('click', () => runWorker().catch(e => status('generation-status', e.message, 'error')));
 }
 
 bindTabs();

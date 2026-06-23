@@ -44,6 +44,9 @@ export const WorkflowAPI = {
   structuredStoryboard(projectId, payload){ return api(`/api/workflow/projects/${projectId}/storyboard/structure`, {method:'POST', body: JSON.stringify(payload)}); },
   generationQueue(projectId){ return api(`/api/workflow/projects/${projectId}/generation-queue`); },
   createGenerationBatch(projectId, payload){ return api(`/api/workflow/projects/${projectId}/generation-queue/batch`, {method:'POST', body: JSON.stringify(payload)}); },
+  runGenerationWorker(projectId, payload={}){ return api(`/api/workflow/projects/${projectId}/generation-worker/run`, {method:'POST', body: JSON.stringify(payload)}); },
+  candidates(projectId){ return api(`/api/workflow/projects/${projectId}/candidates`); },
+  lockCandidate(candidateId){ return api(`/api/workflow/candidates/${candidateId}/lock`, {method:'POST', body: JSON.stringify({})}); },
   generateImage(payload){ return api('/api/generate/images', {method:'POST', body: JSON.stringify(payload)}); },
   generateVideo(payload){ return api('/api/generate/videos', {method:'POST', body: JSON.stringify(payload)}); },
 };

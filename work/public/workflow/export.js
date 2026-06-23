@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api, tokenStore } from './api.js';
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
@@ -40,9 +40,15 @@ function renderExports(exports){
       <span class="pill ${x.status === 'locked' ? 'ok' : 'warn'}">${escapeHtml(x.status)}</span>
       <span class="pill">AI 标识：${x.ai_label_enabled ? '已启用' : '未启用'}</span>
       <div class="prompt">${escapeHtml(x.package_url || '')}</div>
-      <div class="table-actions"><button class="btn" data-view-export="${x.id}">查看证据 JSON</button></div>
+      <div class="table-actions">
+        <button class="btn primary" data-file-export="${x.id}" data-file-kind="zip">下载 ZIP</button>
+        <button class="btn" data-file-export="${x.id}" data-file-kind="json">下载 JSON</button>
+        <button class="btn" data-file-export="${x.id}" data-file-kind="md">下载说明</button>
+        <button class="btn" data-view-export="${x.id}">查看证据 JSON</button>
+      </div>
     </div>`).join('') || '<p class="empty">暂无交付包。</p>';
   document.querySelectorAll('[data-view-export]').forEach(btn => btn.addEventListener('click', () => viewExport(btn.dataset.viewExport)));
+  document.querySelectorAll('[data-file-export]').forEach(btn => btn.addEventListener('click', () => saveExportFile(btn.dataset.fileExport, btn.dataset.fileKind)));
 }
 
 async function createExport(){
@@ -71,6 +77,33 @@ async function viewExport(exportId){
   renderSummary(data.evidence || {});
   const debug = $('debug');
   if (debug) debug.textContent = JSON.stringify(data, null, 2);
+}
+
+function filePath(exportId, kind){
+  if (kind === 'json') return `/api/workflow/exports/${exportId}/download.json`;
+  if (kind === 'md') return `/api/workflow/exports/${exportId}/manifest.md`;
+  return `/api/workflow/exports/${exportId}/download.zip`;
+}
+
+function fileName(exportId, kind){
+  if (kind === 'json') return `${exportId}-evidence.json`;
+  if (kind === 'md') return `${exportId}-manifest.md`;
+  return `${exportId}-evidence-package.zip`;
+}
+
+async function saveExportFile(exportId, kind){
+  const response = await fetch(filePath(exportId, kind), {headers: {Authorization: `Bearer ${tokenStore.get()}`}});
+  if (!response.ok) throw new Error(`文件生成失败：${response.status}`);
+  const fileData = await response.blob();
+  const objectUrl = URL.createObjectURL(fileData);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = fileName(exportId, kind);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+  setStatus('交付文件已开始下载', 'success');
 }
 
 $('create-export-btn')?.addEventListener('click', () => createExport().catch(e => setStatus(e.message, 'error')));

@@ -17,13 +17,14 @@
 - 候选锁定：把图片/视频候选锁定回具体镜头
 - 发布自检：检查 Brief、可信资料、结构化分镜、候选锁定、资产授权和 AI 标识建议
 - 证据包/交付包：把 Brief、资料、脚本、镜头、任务、候选、审核项和 AI 标识汇总成可复核记录
+- 可下载交付文件：支持 ZIP、JSON、Markdown 说明文件下载
 
 ## 模块说明
 
 - `api.js`：统一封装 API、Token、上传、生成队列、worker 和候选锁定逻辑
 - `app.js`：真实工作流页面状态、渲染和事件绑定
 - `review.js`：发布前自检、审核项展示和人工处理
-- `export.js`：证据包生成、交付包记录、证据 JSON 查看
+- `export.js`：证据包生成、交付包记录、证据 JSON 查看和交付文件下载
 - `styles.css`：独立工作流样式，避免继续污染原来的单文件高保真原型
 
 ## 当前生成队列边界
@@ -65,7 +66,17 @@
 
 如果仍有未处理 R1，交付包状态为 `needs_review`；如果没有 R1，交付包状态为 `locked`。
 
-下一步需要把证据 JSON 转成真实文件，例如 JSON/ZIP/PDF，并接入最终成片文件存储。
+## 可下载文件
+
+交付包现在支持以下下载接口：
+
+- `/api/workflow/exports/<export_id>/download.zip`：完整 ZIP 交付包；
+- `/api/workflow/exports/<export_id>/download.json`：完整 evidence JSON；
+- `/api/workflow/exports/<export_id>/manifest.md`：交付说明 Markdown。
+
+ZIP 内包含：`evidence.json`、`manifest.md`、`sources.json`、`scenes.json`、`review_items.json`、`generation_tasks.json`、`candidates.json`、`sources.csv`、`scenes.csv`。
+
+下一步需要接入最终成片文件存储，把真实视频文件和封面图加入 ZIP。
 
 ## 设计取舍
 

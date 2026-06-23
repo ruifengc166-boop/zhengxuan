@@ -1,3 +1,10 @@
+def safe_print(*args, **kwargs):
+    try:
+        print(*args, **kwargs)
+    except OSError:
+        pass
+
+
 import os
 import json
 import time
@@ -95,7 +102,7 @@ def log_current_user(action, detail=""):
             ip=request.headers.get("X-Forwarded-For", request.remote_addr or "")
         )
     except Exception as exc:
-        print(f"[WARN] operation log failed: {exc}", flush=True)
+        safe_print(f"[WARN] operation log failed: {exc}", flush=True)
 
 
 def index_response():
@@ -116,7 +123,7 @@ def index_response():
 def log_request():
     ts = time.strftime("%H:%M:%S", time.localtime())
     if not request.path.startswith("/static/"):
-        print(f"[{ts}] {request.method} {request.path}", flush=True)
+        safe_print(f"[{ts}] {request.method} {request.path}", flush=True)
 
 
 @app.after_request
@@ -559,3 +566,5 @@ if __name__ == "__main__":
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}] 服务器已启动")
     print("[DB] 数据库已加载")
     app.run(host="0.0.0.0", port=port, debug=debug)
+
+

@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from auth import login_required, is_admin_role
-from database import get_db, now, log_operation
+from database import get_db, log_operation
 from platform_workflow_routes import ensure_platform_schema
 
 source_trust = Blueprint("source_trust", __name__, url_prefix="/api/workflow")
@@ -157,8 +157,6 @@ def source_trust_detail(source_id):
         db.close()
         return jsonify({"error": "无更新字段"}), 400
 
-    fields.append("updated_at=?")
-    params.append(now())
     params.append(source_id)
     db.execute(f"UPDATE project_sources SET {','.join(fields)} WHERE id=?", params)
     db.commit()

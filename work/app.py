@@ -23,6 +23,7 @@ from workflow_routes import workflow
 from platform_workflow_routes import platform_workflow
 from source_trust_routes import source_trust
 from generation_queue_routes import generation_queue
+from generation_worker_routes import generation_worker
 from model_config_routes import model_config_api
 from registration_routes import registration
 from model_config import resolve_model_config
@@ -43,6 +44,7 @@ app.register_blueprint(workflow)
 app.register_blueprint(platform_workflow)
 app.register_blueprint(source_trust)
 app.register_blueprint(generation_queue)
+app.register_blueprint(generation_worker)
 app.register_blueprint(model_config_api)
 app.register_blueprint(registration)
 
@@ -514,7 +516,7 @@ def retry_generation():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.7.1"})
+    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.7.2"})
 
 
 @app.route("/admin/")
@@ -544,7 +546,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", "3002"))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     print("┌─────────────────────────────────────────────┐")
-    print(f"│  政宣智作 · 开发服务器 v0.7.1                │")
+    print(f"│  政宣智作 · 开发服务器 v0.7.2                │")
     print(f"│  前端:  http://localhost:{port}                │")
     print(f"│  真实工作流: http://localhost:{port}/workflow.html │")
     print(f"│  API:   http://localhost:{port}/api           │")

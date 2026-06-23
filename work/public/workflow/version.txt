@@ -1,4 +1,5 @@
 workflow-frontend-integration: complete
 entry: /workflow.html
 modules: api.js, app.js, styles.css
-covers: brief, source-trust, visual-assets, readiness, structured-storyboard
+covers: brief, source-trust, visual-assets, readiness, structured-storyboard, generation-queue, worker, candidates, candidate-locking
+version: 0.7.2

@@ -42,6 +42,8 @@ export const WorkflowAPI = {
   assets(projectId){ return api(`/api/workflow/projects/${projectId}/assets`); },
   createAsset(projectId, payload){ return api(`/api/workflow/projects/${projectId}/assets`, {method:'POST', body: JSON.stringify(payload)}); },
   structuredStoryboard(projectId, payload){ return api(`/api/workflow/projects/${projectId}/storyboard/structure`, {method:'POST', body: JSON.stringify(payload)}); },
+  generationQueue(projectId){ return api(`/api/workflow/projects/${projectId}/generation-queue`); },
+  createGenerationBatch(projectId, payload){ return api(`/api/workflow/projects/${projectId}/generation-queue/batch`, {method:'POST', body: JSON.stringify(payload)}); },
   generateImage(payload){ return api('/api/generate/images', {method:'POST', body: JSON.stringify(payload)}); },
   generateVideo(payload){ return api('/api/generate/videos', {method:'POST', body: JSON.stringify(payload)}); },
 };

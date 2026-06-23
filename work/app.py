@@ -22,6 +22,7 @@ from admin_routes import admin
 from workflow_routes import workflow
 from platform_workflow_routes import platform_workflow
 from source_trust_routes import source_trust
+from generation_queue_routes import generation_queue
 from model_config_routes import model_config_api
 from registration_routes import registration
 from model_config import resolve_model_config
@@ -41,6 +42,7 @@ app.register_blueprint(admin)
 app.register_blueprint(workflow)
 app.register_blueprint(platform_workflow)
 app.register_blueprint(source_trust)
+app.register_blueprint(generation_queue)
 app.register_blueprint(model_config_api)
 app.register_blueprint(registration)
 
@@ -94,8 +96,11 @@ def index_response():
     """Serve the original single-file prototype with the non-destructive UI 2.0 layer."""
     html = (PUBLIC_DIR / "index.html").read_text(encoding="utf-8")
     css_tag = '<link rel="stylesheet" href="/ui2.css?v=20260621">'
+    workflow_link = '<a href="/workflow.html" style="position:fixed;right:20px;bottom:20px;z-index:9999;background:#102b46;color:#fff;text-decoration:none;border-radius:999px;padding:10px 14px;font-size:13px;box-shadow:0 10px 28px rgba(0,0,0,.18)">进入真实工作流</a>'
     if css_tag not in html:
         html = html.replace("</head>", f"  {css_tag}\n</head>")
+    if workflow_link not in html:
+        html = html.replace("</body>", f"  {workflow_link}\n</body>")
     response = make_response(html)
     response.headers["Content-Type"] = "text/html; charset=utf-8"
     return response
@@ -509,7 +514,7 @@ def retry_generation():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.7.0"})
+    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.7.1"})
 
 
 @app.route("/admin/")
@@ -539,8 +544,9 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", "3002"))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     print("┌─────────────────────────────────────────────┐")
-    print(f"│  政宣智作 · 开发服务器 v0.7.0                │")
+    print(f"│  政宣智作 · 开发服务器 v0.7.1                │")
     print(f"│  前端:  http://localhost:{port}                │")
+    print(f"│  真实工作流: http://localhost:{port}/workflow.html │")
     print(f"│  API:   http://localhost:{port}/api           │")
     print(f"│  管理后台: http://localhost:{port}/admin/      │")
     print("└─────────────────────────────────────────────┘")

@@ -520,7 +520,7 @@ def retry_generation():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.7.4"})
+    return jsonify({"status": "ok", "service": "政宣智作 API", "version": "0.7.5"})
 
 
 @app.route("/admin/")
@@ -550,7 +550,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", "3002"))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     print("┌─────────────────────────────────────────────┐")
-    print(f"│  政宣智作 · 开发服务器 v0.7.4                │")
+    print(f"│  政宣智作 · 开发服务器 v0.7.5                │")
     print(f"│  前端:  http://localhost:{port}                │")
     print(f"│  真实工作流: http://localhost:{port}/workflow.html │")
     print(f"│  API:   http://localhost:{port}/api           │")

@@ -10,60 +10,25 @@
 <div class="app">
   <aside class="side">
     <div class="brand"><div class="mark"></div><div><b>政宣智作</b><span>真实工作流模块</span></div></div>
-    <div class="login">
-      <label>手机号</label><input id="login-phone" placeholder="18800000000">
-      <label>密码</label><input id="login-password" type="password" placeholder="输入密码">
-      <button class="btn primary" id="login-btn">登录并加载项目</button>
-      <div class="statusbar" id="login-status"></div>
-    </div>
-    <div class="nav-title">项目</div>
-    <div class="projects" id="project-list"></div>
+    <div class="login"><label>手机号</label><input id="login-phone" placeholder="18800000000"><label>密码</label><input id="login-password" type="password" placeholder="输入密码"><button class="btn primary" id="login-btn">登录并加载项目</button><div class="statusbar" id="login-status"></div></div>
+    <div class="nav-title">项目</div><div class="projects" id="project-list"></div>
   </aside>
   <main class="main">
-    <div class="top">
-      <div><h1 id="page-title">真实工作流</h1><p>把高保真原型里的 Brief、资料可信度、视觉资产、结构化分镜、生成队列、候选锁定和发布自检接成真实可操作流程。</p></div>
-      <div class="top-actions"><button class="btn" id="reload-btn">刷新</button><button class="btn primary" id="new-project-btn">新建测试项目</button></div>
-    </div>
-    <div class="tabs">
-      <button class="tab active" data-section="overview">总览</button>
-      <button class="tab" data-section="brief">Brief</button>
-      <button class="tab" data-section="sources">资料可信度</button>
-      <button class="tab" data-section="assets">视觉资产</button>
-      <button class="tab" data-section="storyboard">结构化分镜</button>
-      <button class="tab" data-section="generation">生成队列</button>
-      <button class="tab" data-section="review">发布自检</button>
-    </div>
+    <div class="top"><div><h1 id="page-title">真实工作流</h1><p>把 Brief、资料可信度、视觉资产、结构化分镜、生成队列、候选锁定、发布自检和证据包交付接成真实可操作流程。</p></div><div class="top-actions"><button class="btn" id="reload-btn">刷新</button><button class="btn primary" id="new-project-btn">新建测试项目</button></div></div>
+    <div class="tabs"><button class="tab active" data-section="overview">总览</button><button class="tab" data-section="brief">Brief</button><button class="tab" data-section="sources">资料可信度</button><button class="tab" data-section="assets">视觉资产</button><button class="tab" data-section="storyboard">结构化分镜</button><button class="tab" data-section="generation">生成队列</button><button class="tab" data-section="review">发布自检</button><button class="tab" data-section="export">交付包</button></div>
 
-    <section id="overview" class="section active">
-      <div class="grid g4" id="readiness-metrics"></div>
-      <div class="blockers" id="readiness-blockers"></div>
-      <div class="grid g2">
-        <div class="card"><div class="card-head"><h2>下一步建议</h2><span>自动判断</span></div><div class="card-body" id="next-actions"><p class="empty">选择项目后显示。</p></div></div>
-        <div class="card"><div class="card-head"><h2>接口调试</h2><span>最近响应</span></div><div class="card-body"><pre class="debug" id="debug">等待操作...</pre></div></div>
-      </div>
-    </section>
-
+    <section id="overview" class="section active"><div class="grid g4" id="readiness-metrics"></div><div class="blockers" id="readiness-blockers"></div><div class="grid g2"><div class="card"><div class="card-head"><h2>下一步建议</h2><span>自动判断</span></div><div class="card-body" id="next-actions"><p class="empty">选择项目后显示。</p></div></div><div class="card"><div class="card-head"><h2>接口调试</h2><span>最近响应</span></div><div class="card-body"><pre class="debug" id="debug">等待操作...</pre></div></div></div></section>
     <section id="brief" class="section"><div class="card"><div class="card-head"><h2>项目 Brief</h2><span>传播目标与口径边界</span></div><div class="card-body"><div class="grid g2"><div><div class="field"><label>宣传目标</label><textarea id="brief-objective"></textarea></div><div class="field"><label>目标受众</label><input id="brief-audience"></div><div class="field"><label>语气风格</label><input id="brief-tone"></div></div><div><div class="field"><label>必须出现的信息</label><textarea id="brief-required"></textarea></div><div class="field"><label>禁用表达</label><textarea id="brief-forbidden"></textarea></div><button class="btn primary" id="save-brief-btn">保存 Brief</button><span class="statusbar" id="brief-status"></span></div></div></div></div></section>
-
     <section id="sources" class="section"><div class="grid g2"><div class="card"><div class="card-head"><h2>上传资料</h2><span>上传后进入可信度管理</span></div><div class="card-body"><div class="drop"><input id="source-file" type="file"><div class="row" style="margin-top:10px"><select id="upload-data-level"><option value="L1">L1 公开/一般资料</option><option value="L2">L2 内部资料</option><option value="L3">L3 敏感资料</option></select><button class="btn primary" id="upload-source-btn">上传</button></div></div><div class="table-actions"><button class="btn" id="parse-sources-btn">解析全部资料</button><button class="btn" id="reload-sources-btn">刷新资料</button></div><div class="statusbar" id="source-status"></div></div></div><div class="card"><div class="card-head"><h2>资料可信度说明</h2><span>给脚本和分镜做引用约束</span></div><div class="card-body"><p class="empty">每份资料都可以设置权威等级、是否可引用、是否可视化、敏感等级。结构化分镜会优先引用可引用资料，并在 Prompt 中保留来源标记。</p></div></div></div><div style="height:14px"></div><div id="source-list"></div></section>
-
     <section id="assets" class="section"><div class="grid g2"><div class="card"><div class="card-head"><h2>新增视觉资产</h2><span>Logo / 人物 / 场景 / B-roll</span></div><div class="card-body"><div class="field"><label>资产名称</label><input id="asset-title"></div><div class="row"><div class="field"><label>资产类型</label><select id="asset-type"><option value="logo">Logo</option><option value="person">人物</option><option value="location">场景</option><option value="certificate">证书/荣誉</option><option value="chart">图表</option><option value="broll">B-roll</option><option value="reference">参考素材</option></select></div><div class="field"><label>授权状态</label><select id="asset-auth"><option value="unchecked">未确认</option><option value="authorized">已授权</option><option value="restricted">限制使用</option><option value="forbidden">禁止使用</option></select></div></div><div class="field"><label>视觉描述</label><textarea id="asset-desc"></textarea></div><button class="btn primary" id="create-asset-btn">新增资产</button><span class="statusbar" id="asset-status"></span></div></div><div class="card"><div class="card-head"><h2>资产列表</h2><span>结构化分镜会自动引用</span></div><div class="card-body" id="asset-list"><p class="empty">选择项目后显示。</p></div></div></div></section>
-
     <section id="storyboard" class="section"><div class="card"><div class="card-head"><h2>结构化分镜</h2><span>镜头目的 / 资料引用 / Prompt</span></div><div class="card-body"><div class="row"><input id="story-style" placeholder="纪实、克制、可信、公共服务宣传片"><button class="btn primary" id="generate-storyboard-btn">生成结构化分镜</button></div><div style="height:14px"></div><div id="storyboard-list"><p class="empty">选择项目后显示。</p></div></div></div></section>
-
     <section id="generation" class="section"><div class="grid g2"><div class="card"><div class="card-head"><h2>生成任务创建</h2><span>从结构化分镜进入任务队列</span></div><div class="card-body"><p class="empty">创建任务会写入 generation_tasks 和 generation_adapter_runs；运行 worker 后会回写 generation_candidates。当前 worker 是模拟执行器，用于打通生产闭环。</p><div class="table-actions"><button class="btn primary" id="create-image-batch-btn">创建图片任务</button><button class="btn primary" id="create-video-batch-btn">创建视频任务</button><button class="btn success" id="create-both-batch-btn">图片 + 视频</button><button class="btn" id="run-worker-btn">运行 worker</button><button class="btn" id="reload-generation-btn">刷新队列</button></div><div class="statusbar" id="generation-status"></div></div></div><div class="card"><div class="card-head"><h2>镜头 Prompt 准备度</h2><span>按镜头检查</span></div><div class="card-body" id="generation-plan-list"><p class="empty">选择项目后显示。</p></div></div></div><div style="height:14px"></div><div class="grid g2"><div class="card"><div class="card-head"><h2>任务队列</h2><span>最近 100 个任务</span></div><div class="card-body" id="generation-task-list"><p class="empty">暂无任务。</p></div></div><div class="card"><div class="card-head"><h2>候选结果</h2><span>可锁定到镜头</span></div><div class="card-body" id="candidate-list"><p class="empty">运行 worker 后显示候选结果。</p></div></div></div></section>
-
-    <section id="review" class="section">
-      <div class="grid g2">
-        <div class="card"><div class="card-head"><h2>发布前自检</h2><span>阻断项 / 警告项 / 提示项</span></div><div class="card-body"><p class="empty">运行自检会检查 Brief、可信资料、结构化分镜、锁定候选、资产授权和 AI 标识建议。R1 为交付阻断项。</p><div class="table-actions"><button class="btn primary" id="run-review-btn">运行发布自检</button><button class="btn" id="reload-review-btn">刷新自检结果</button></div><div class="statusbar" id="review-status"></div></div></div>
-        <div class="card"><div class="card-head"><h2>自检摘要</h2><span>是否允许交付</span></div><div class="card-body" id="review-summary"><p class="empty">尚未运行自检。</p></div></div>
-      </div>
-      <div style="height:14px"></div>
-      <div class="card"><div class="card-head"><h2>审核项</h2><span>可人工处理</span></div><div class="card-body" id="review-item-list"><p class="empty">暂无审核项。</p></div></div>
-    </section>
+    <section id="review" class="section"><div class="grid g2"><div class="card"><div class="card-head"><h2>发布前自检</h2><span>阻断项 / 警告项 / 提示项</span></div><div class="card-body"><p class="empty">运行自检会检查 Brief、可信资料、结构化分镜、锁定候选、资产授权和 AI 标识建议。R1 为交付阻断项。</p><div class="table-actions"><button class="btn primary" id="run-review-btn">运行发布自检</button><button class="btn" id="reload-review-btn">刷新自检结果</button></div><div class="statusbar" id="review-status"></div></div></div><div class="card"><div class="card-head"><h2>自检摘要</h2><span>是否允许交付</span></div><div class="card-body" id="review-summary"><p class="empty">尚未运行自检。</p></div></div></div><div style="height:14px"></div><div class="card"><div class="card-head"><h2>审核项</h2><span>可人工处理</span></div><div class="card-body" id="review-item-list"><p class="empty">暂无审核项。</p></div></div></section>
+    <section id="export" class="section"><div class="grid g2"><div class="card"><div class="card-head"><h2>证据包 / 交付包</h2><span>可复核交付记录</span></div><div class="card-body"><p class="empty">生成交付包会汇总 Brief、可信资料、脚本版本、镜头卡、锁定候选、生成任务、审核项和 AI 标识记录。若仍有 R1，交付包状态为 needs_review。</p><div class="field"><label>版本名称</label><input id="export-version" placeholder="正式交付版 v1"></div><div class="table-actions"><button class="btn primary" id="create-export-btn">生成交付包</button><button class="btn" id="reload-export-btn">刷新交付包</button></div><div class="statusbar" id="export-status"></div></div></div><div class="card"><div class="card-head"><h2>交付摘要</h2><span>证据链概览</span></div><div class="card-body" id="export-summary"><p class="empty">尚未生成交付包。</p></div></div></div><div style="height:14px"></div><div class="card"><div class="card-head"><h2>交付包记录</h2><span>历史锁版</span></div><div class="card-body" id="export-list"><p class="empty">暂无交付包。</p></div></div></section>
   </main>
 </div>
 <script type="module" src="/workflow/app.js"></script>
 <script type="module" src="/workflow/review.js"></script>
+<script type="module" src="/workflow/export.js"></script>
 </body>
 </html>

@@ -1,6 +1,8 @@
+import io
 import json
+import zipfile
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 
 from auth import login_required
 from database import get_db, gen_id, now, log_operation
@@ -132,6 +134,112 @@ def collect_evidence(db, project, export_id):
     return package
 
 
+def export_urls(export_id):
+    return {
+        "evidence_json": f"/api/workflow/exports/{export_id}/download.json",
+        "manifest_md": f"/api/workflow/exports/{export_id}/manifest.md",
+        "zip": f"/api/workflow/exports/{export_id}/download.zip",
+    }
+
+
+def enrich_export_record(record):
+    item = dict(record)
+    item["download_urls"] = export_urls(item["id"])
+    return item
+
+
+def evidence_json_text(evidence):
+    return json.dumps(evidence, ensure_ascii=False, indent=2)
+
+
+def manifest_markdown(record, evidence):
+    project = evidence.get("project", {})
+    summary = evidence.get("summary", {})
+    brief = evidence.get("brief", {})
+    ai_label = evidence.get("ai_label", {})
+    lines = [
+        f"# {record.get('version_label') or '交付包'}",
+        "",
+        "## 基本信息",
+        f"- 项目名称：{project.get('name', '')}",
+        f"- 项目 ID：{project.get('id', '')}",
+        f"- 交付包 ID：{record.get('id', '')}",
+        f"- 状态：{record.get('status', '')}",
+        f"- 创建时间：{record.get('created_at', '')}",
+        "",
+        "## Brief 摘要",
+        f"- 宣传目标：{brief.get('objective', '')}",
+        f"- 目标受众：{brief.get('target_audience', '')}",
+        f"- 语气风格：{brief.get('tone', '')}",
+        "",
+        "## 证据链摘要",
+        f"- 资料数量：{summary.get('source_count', 0)}",
+        f"- 镜头数量：{summary.get('scene_count', 0)}",
+        f"- 视觉资产数量：{summary.get('asset_count', 0)}",
+        f"- 生成任务数量：{summary.get('task_count', 0)}",
+        f"- 候选数量：{summary.get('candidate_count', 0)}",
+        f"- 锁定候选数量：{summary.get('locked_candidate_count', 0)}",
+        f"- R1 阻断项：{summary.get('open_r1_count', 0)}",
+        f"- R2 警告项：{summary.get('open_r2_count', 0)}",
+        f"- 是否可交付：{'是' if summary.get('export_ready') else '否'}",
+        "",
+        "## AI 标识",
+        ai_label.get("text", ""),
+        "",
+        "## 文件清单",
+        "- evidence.json：完整证据 JSON",
+        "- manifest.md：本说明文件",
+        "- sources.json：资料清单",
+        "- scenes.json：镜头和引用清单",
+        "- review_items.json：审核项清单",
+        "- generation_tasks.json：生成任务清单",
+        "- candidates.json：候选结果清单",
+    ]
+    return "\n".join(lines)
+
+
+def csv_escape(value):
+    text = str(value or "")
+    return '"' + text.replace('"', '""').replace("\n", " ") + '"'
+
+
+def source_csv(evidence):
+    rows = ["id,title,source_type,data_level,authority,sensitive,can_quote,can_visualize,parse_status"]
+    for s in evidence.get("source_register", []):
+        rows.append(",".join([
+            csv_escape(s.get("id")), csv_escape(s.get("title") or s.get("original_name")), csv_escape(s.get("source_type")),
+            csv_escape(s.get("data_level")), csv_escape(s.get("source_authority_level")), csv_escape(s.get("sensitive_level")),
+            csv_escape(s.get("can_quote")), csv_escape(s.get("can_visualize")), csv_escape(s.get("parse_status")),
+        ]))
+    return "\n".join(rows)
+
+
+def scene_csv(evidence):
+    rows = ["scene_order,name,scene_goal,generation_mode,source_citations,locked_image_url,locked_video_url"]
+    for s in evidence.get("scene_cards", []):
+        rows.append(",".join([
+            csv_escape(s.get("scene_order")), csv_escape(s.get("name")), csv_escape(s.get("scene_goal")),
+            csv_escape(s.get("generation_mode")), csv_escape(";".join(s.get("source_citations") or [])),
+            csv_escape(s.get("locked_image_url")), csv_escape(s.get("locked_video_url")),
+        ]))
+    return "\n".join(rows)
+
+
+def fetch_export_record(export_id):
+    db = get_db()
+    record = db.execute("SELECT * FROM exports WHERE id=?", (export_id,)).fetchone()
+    if not record:
+        db.close()
+        return None, None, (jsonify({"error": "交付包不存在"}), 404)
+    project, error = get_project_for_user(db, record["project_id"], request.current_user)
+    if error:
+        db.close()
+        return None, None, error
+    evidence = safe_json(record["evidence_package_json"], {})
+    db.close()
+    return dict(record), evidence, None
+
+
 @export_package.route("/projects/<project_id>/exports", methods=["GET"])
 @login_required
 def list_exports(project_id):
@@ -143,7 +251,7 @@ def list_exports(project_id):
         return error
     rows = rows_to_dicts(db.execute("SELECT * FROM exports WHERE project_id=? ORDER BY created_at DESC", (project_id,)).fetchall())
     db.close()
-    return jsonify({"project_id": project_id, "exports": rows})
+    return jsonify({"project_id": project_id, "exports": [enrich_export_record(r) for r in rows]})
 
 
 @export_package.route("/projects/<project_id>/exports", methods=["POST"])
@@ -159,7 +267,7 @@ def create_export(project_id):
     export_id = gen_id("exp")
     evidence = collect_evidence(db, project, export_id)
     version_label = data.get("version_label") or f"交付包 {now()}"
-    package_url = f"evidence://exports/{export_id}.json"
+    package_url = f"/api/workflow/exports/{export_id}/download.zip"
     status = "locked" if evidence["summary"]["export_ready"] else "needs_review"
     db.execute(
         """
@@ -182,7 +290,7 @@ def create_export(project_id):
     )
     db.execute("UPDATE projects SET status=?,progress=MAX(progress, ?),updated_at=? WHERE id=?", ("已锁版" if status == "locked" else "待复核", 98 if status == "locked" else 90, now(), project_id))
     db.commit()
-    record = dict(db.execute("SELECT * FROM exports WHERE id=?", (export_id,)).fetchone())
+    record = enrich_export_record(db.execute("SELECT * FROM exports WHERE id=?", (export_id,)).fetchone())
     db.close()
     log_action("create_evidence_export", f"项目 {project_id} 创建证据包 {export_id} status={status}")
     return jsonify({"success": True, "export": record, "evidence": evidence})
@@ -192,15 +300,55 @@ def create_export(project_id):
 @login_required
 def get_export_evidence(export_id):
     ensure_platform_schema()
-    db = get_db()
-    record = db.execute("SELECT * FROM exports WHERE id=?", (export_id,)).fetchone()
-    if not record:
-        db.close()
-        return jsonify({"error": "交付包不存在"}), 404
-    project, error = get_project_for_user(db, record["project_id"], request.current_user)
+    record, evidence, error = fetch_export_record(export_id)
     if error:
-        db.close()
         return error
-    evidence = safe_json(record["evidence_package_json"], {})
-    db.close()
-    return jsonify({"export": dict(record), "evidence": evidence})
+    return jsonify({"export": enrich_export_record(record), "evidence": evidence})
+
+
+@export_package.route("/exports/<export_id>/download.json", methods=["GET"])
+@login_required
+def download_evidence_json(export_id):
+    ensure_platform_schema()
+    record, evidence, error = fetch_export_record(export_id)
+    if error:
+        return error
+    body = evidence_json_text(evidence)
+    filename = f"{record['id']}-evidence.json"
+    return Response(body, mimetype="application/json; charset=utf-8", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@export_package.route("/exports/<export_id>/manifest.md", methods=["GET"])
+@login_required
+def download_manifest(export_id):
+    ensure_platform_schema()
+    record, evidence, error = fetch_export_record(export_id)
+    if error:
+        return error
+    body = manifest_markdown(record, evidence)
+    filename = f"{record['id']}-manifest.md"
+    return Response(body, mimetype="text/markdown; charset=utf-8", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@export_package.route("/exports/<export_id>/download.zip", methods=["GET"])
+@login_required
+def download_export_zip(export_id):
+    ensure_platform_schema()
+    record, evidence, error = fetch_export_record(export_id)
+    if error:
+        return error
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("evidence.json", evidence_json_text(evidence))
+        zf.writestr("manifest.md", manifest_markdown(record, evidence))
+        zf.writestr("sources.json", json.dumps(evidence.get("source_register", []), ensure_ascii=False, indent=2))
+        zf.writestr("scenes.json", json.dumps(evidence.get("scene_cards", []), ensure_ascii=False, indent=2))
+        zf.writestr("review_items.json", json.dumps(evidence.get("review_items", []), ensure_ascii=False, indent=2))
+        zf.writestr("generation_tasks.json", json.dumps(evidence.get("generation_tasks", []), ensure_ascii=False, indent=2))
+        zf.writestr("candidates.json", json.dumps(evidence.get("generation_candidates", []), ensure_ascii=False, indent=2))
+        zf.writestr("sources.csv", source_csv(evidence))
+        zf.writestr("scenes.csv", scene_csv(evidence))
+    buffer.seek(0)
+    filename = f"{record['id']}-evidence-package.zip"
+    log_action("download_evidence_zip", f"下载交付包 {export_id}")
+    return Response(buffer.getvalue(), mimetype="application/zip", headers={"Content-Disposition": f"attachment; filename={filename}"})
